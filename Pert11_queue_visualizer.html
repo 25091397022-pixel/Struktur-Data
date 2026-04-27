@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue — 5 Kasus Implementasi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;600;700&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --panel: #111827;
+    --border: #1e2d45;
+    --accent1: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --accent5: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --node-bg: #1e293b;
+    --node-border: #334155;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    text-align: center;
+    padding: 2.5rem 1rem 1.5rem;
+    background: linear-gradient(180deg, #0d1526 0%, transparent 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header p { color: var(--muted); margin-top: 0.4rem; font-size: 0.9rem; letter-spacing: 0.05em; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1.2rem 1.5rem;
+    overflow-x: auto;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); border-color: var(--node-border); }
+  .tab.active { color: #000; font-weight: 700; }
+  .tab[data-case="1"].active { background: var(--accent1); border-color: var(--accent1); }
+  .tab[data-case="2"].active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .tab[data-case="3"].active { background: var(--accent3); border-color: var(--accent3); }
+  .tab[data-case="4"].active { background: var(--accent4); border-color: var(--accent4); }
+  .tab[data-case="5"].active { background: var(--accent5); border-color: var(--accent5); color: #fff; }
+
+  /* CONTENT */
+  .content { display: none; padding: 1.5rem; max-width: 1000px; margin: 0 auto; }
+  .content.active { display: block; }
+
+  /* CASE HEADER */
+  .case-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .case-badge {
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+    margin-top: 0.3rem;
+  }
+  .case-header h2 { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+  .case-header p { color: var(--muted); font-size: 0.85rem; margin-top: 0.3rem; }
+
+  /* STAGE / ARENA */
+  .arena {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    min-height: 160px;
+    position: relative;
+    overflow: hidden;
+  }
+  .arena-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  /* QUEUE TRACK */
+  .queue-track {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 64px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .queue-track::-webkit-scrollbar { display: none; }
+
+  .queue-label {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .q-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    flex-shrink: 0;
+  }
+  @keyframes popIn {
+    from { transform: scale(0) translateY(10px); opacity: 0; }
+    to   { transform: scale(1) translateY(0);   opacity: 1; }
+  }
+  .q-node.leaving {
+    animation: slideOut 0.3s ease-in forwards;
+  }
+  @keyframes slideOut {
+    to { transform: translateX(-30px) scale(0.8); opacity: 0; }
+  }
+
+  .q-box {
+    width: 64px;
+    height: 52px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border: 2px solid;
+    position: relative;
+    cursor: default;
+    transition: transform 0.15s;
+    text-align: center;
+    padding: 2px;
+    word-break: break-all;
+    line-height: 1.1;
+  }
+
+  .arrow-right {
+    color: var(--muted);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .q-idx {
+    font-size: 0.6rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* CONTROLS */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    align-items: center;
+  }
+  .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    transition: all 0.15s;
+  }
+  .btn:hover { filter: brightness(1.2); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-primary   { background: var(--accent1); color: #000; }
+  .btn-danger    { background: var(--accent5); color: #fff; }
+  .btn-success   { background: var(--accent3); color: #000; }
+  .btn-warning   { background: var(--accent4); color: #000; }
+  .btn-purple    { background: var(--accent2); color: #fff; }
+  .btn-reset     { background: var(--node-bg); color: var(--text); border: 1px solid var(--border); }
+
+  .input-group { display: flex; gap: 0.4rem; align-items: center; }
+  .input-group input, .input-group select {
+    background: var(--node-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.48rem 0.75rem;
+    border-radius: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    width: 120px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-group input:focus, .input-group select:focus { border-color: var(--accent1); }
+
+  /* LOG */
+  .log {
+    background: #060b14;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.9rem 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    max-height: 140px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .log-entry { padding: 0.15rem 0; line-height: 1.5; }
+  .log-entry.ok   { color: var(--accent3); }
+  .log-entry.err  { color: var(--accent5); }
+  .log-entry.info { color: var(--accent1); }
+  .log-entry.warn { color: var(--accent4); }
+
+  /* CODE */
+  .code-block {
+    background: #060b14;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1rem 1.2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: #a3c4dc;
+  }
+  .code-block .kw  { color: #c792ea; }
+  .code-block .fn  { color: #82aaff; }
+  .code-block .str { color: #c3e88d; }
+  .code-block .cm  { color: #546e7a; font-style: italic; }
+  .code-block .num { color: #f78c6c; }
+
+  /* STAT CHIPS */
+  .stats {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: var(--node-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .stat-label { color: var(--muted); }
+  .stat-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+  /* BFS GRAPH */
+  .graph-wrap {
+    position: relative;
+    height: 220px;
+    margin-bottom: 0.5rem;
+  }
+  .graph-wrap svg { width: 100%; height: 100%; }
+  .gnode circle { stroke-width: 2; transition: fill 0.3s, stroke 0.3s; }
+  .gnode text { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; fill: #fff; dominant-baseline: middle; text-anchor: middle; }
+
+  /* AIRPORT sim */
+  .sim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .sim-panel {
+    background: #060b14;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.9rem;
+  }
+  .sim-panel h4 { font-size: 0.72rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.6rem; }
+
+  .agent {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    font-size: 0.8rem;
+  }
+  .agent-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+
+  /* PRIORITY levels */
+  .prio-0 { background: #ff4444 !important; border-color: #ff6666 !important; color: #fff; }
+  .prio-1 { background: #f59e0b !important; border-color: #fbbf24 !important; color: #000; }
+  .prio-2 { background: #3b82f6 !important; border-color: #60a5fa !important; color: #fff; }
+  .prio-3 { background: #22c55e !important; border-color: #4ade80 !important; color: #000; }
+
+  /* CIRCULAR ARRAY VIEW */
+  .circular-wrap {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 1rem;
+  }
+  .circular-wrap svg { width: 100%; height: 100%; }
+
+  /* speed control */
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .speed-row input[type=range] {
+    accent-color: var(--accent1);
+    width: 100px;
+  }
+
+  /* animation running indicator */
+  .running-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.65rem;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    color: var(--accent1);
+    font-weight: 700;
+  }
+  .running-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent1);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Queue — 5 Kasus Implementasi</h1>
+  <p>VISUALISASI INTERAKTIF · STRUKTUR DATA &amp; ALGORITMA</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-case="1" onclick="switchCase(1)">🖨️ Kasus 1: Antrian Printer</button>
+  <button class="tab" data-case="2" onclick="switchCase(2)">🥔 Kasus 2: Hot Potato</button>
+  <button class="tab" data-case="3" onclick="switchCase(3)">🏥 Kasus 3: Priority Queue RS</button>
+  <button class="tab" data-case="4" onclick="switchCase(4)">🔍 Kasus 4: BFS Graf</button>
+  <button class="tab" data-case="5" onclick="switchCase(5)">✈️ Kasus 5: Loket Bandara</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     KASUS 1: ANTRIAN PRINTER
+════════════════════════════════════════════════════ -->
+<div class="content active" id="case-1">
+  <div class="case-header">
+    <span class="case-badge" style="background:rgba(0,212,255,0.15);color:var(--accent1);border:1px solid rgba(0,212,255,0.3)">KASUS 1</span>
+    <div>
+      <h2>Antrian Printer Bersama</h2>
+      <p>Dokumen dicetak sesuai urutan kedatangan — FIFO murni</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat-label">Ukuran Queue:</span><span class="stat-val" id="p1-size">0</span></div>
+    <div class="stat"><span class="stat-label">Total Dicetak:</span><span class="stat-val" id="p1-printed">0</span></div>
+    <div class="stat"><span class="stat-label">Status Printer:</span><span class="stat-val" id="p1-status" style="color:var(--accent3)">IDLE</span></div>
+  </div>
+
+  <div class="arena">
+    <div class="arena-title">📋 Antrian Dokumen</div>
+    <div class="queue-label">
+      <span style="color:var(--accent3)">← DEPAN (dequeue)</span>
+      <span style="color:var(--accent1)">BELAKANG (enqueue) →</span>
+    </div>
+    <div class="queue-track" id="p1-queue"></div>
+    <div id="p1-empty" style="color:var(--muted);font-size:0.82rem;margin-top:0.5rem;display:none">Queue kosong — tambahkan dokumen!</div>
+  </div>
+
+  <div class="controls">
+    <div class="input-group">
+      <select id="p1-doc">
+        <option>laporan.pdf</option>
+        <option>tugas.docx</option>
+        <option>foto.jpg</option>
+        <option>presentasi.pptx</option>
+        <option>spreadsheet.xlsx</option>
+        <option>skripsi.pdf</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="p1Enqueue()">➕ Enqueue (Kirim Dokumen)</button>
+    <button class="btn btn-danger" id="p1-deq-btn" onclick="p1Dequeue()">🖨️ Dequeue (Cetak)</button>
+    <button class="btn btn-warning" onclick="p1AutoPrint()">▶ Auto Cetak Semua</button>
+    <button class="btn btn-reset" onclick="p1Reset()">↺ Reset</button>
+  </div>
+
+  <div class="log" id="p1-log"><div class="log-entry info">// Sistem antrian printer siap. Kirim dokumen!</div></div>
+
+  <div class="code-block">
+<span class="cm"># Simulasi Antrian Printer</span>
+<span class="kw">printer_queue</span> = Queue()
+<span class="cm"># User mengirim dokumen:</span>
+printer_queue.<span class="fn">enqueue</span>(<span class="str">"laporan.pdf"</span>)   <span class="cm"># → rear</span>
+printer_queue.<span class="fn">enqueue</span>(<span class="str">"tugas.docx"</span>)    <span class="cm"># → rear</span>
+printer_queue.<span class="fn">enqueue</span>(<span class="str">"foto.jpg"</span>)      <span class="cm"># → rear</span>
+<span class="cm"># Printer memproses (FIFO):</span>
+<span class="kw">while not</span> printer_queue.<span class="fn">isEmpty</span>():
+    doc = printer_queue.<span class="fn">dequeue</span>()     <span class="cm"># ← front</span>
+    <span class="fn">print</span>(<span class="str">f"Mencetak: {doc}"</span>)
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     KASUS 2: HOT POTATO
+════════════════════════════════════════════════════ -->
+<div class="content" id="case-2">
+  <div class="case-header">
+    <span class="case-badge" style="background:rgba(124,58,237,0.15);color:var(--accent2);border:1px solid rgba(124,58,237,0.3)">KASUS 2</span>
+    <div>
+      <h2>Permainan Hot Potato</h2>
+      <p>Simulasi permainan melingkar menggunakan circular queue — dequeue lalu enqueue kembali</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat-label">Pemain tersisa:</span><span class="stat-val" id="p2-remaining">0</span></div>
+    <div class="stat"><span class="stat-label">Putaran oper (N):</span><span class="stat-val" id="p2-n-display">3</span></div>
+    <div class="stat"><span class="stat-label">Pemenang:</span><span class="stat-val" id="p2-winner" style="color:var(--accent3)">—</span></div>
+  </div>
+
+  <div class="arena">
+    <div class="arena-title">🥔 Lingkaran Pemain</div>
+    <div id="p2-circle-wrap" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;min-height:70px"></div>
+  </div>
+
+  <div class="controls">
+    <div class="input-group">
+      <label style="font-size:0.8rem;color:var(--muted)">N oper:</label>
+      <input type="number" id="p2-n" value="3" min="1" max="20" style="width:70px" oninput="document.getElementById('p2-n-display').textContent=this.value">
+    </div>
+    <button class="btn btn-purple" onclick="p2Setup()">🔄 Setup Pemain</button>
+    <button class="btn btn-warning" id="p2-step-btn" onclick="p2Step()" disabled>⏩ Satu Putaran</button>
+    <button class="btn btn-success" id="p2-auto-btn" onclick="p2AutoPlay()" disabled>▶ Auto Play</button>
+    <button class="btn btn-reset" onclick="p2Reset()">↺ Reset</button>
+    <span id="p2-running-badge" style="display:none" class="running-badge"><span class="running-dot"></span>RUNNING</span>
+  </div>
+
+  <div class="log" id="p2-log"><div class="log-entry info">// Klik "Setup Pemain" untuk mulai!</div></div>
+
+  <div class="code-block">
+<span class="kw">def</span> <span class="fn">hot_potato</span>(names, num):
+    q = Queue()
+    <span class="kw">for</span> name <span class="kw">in</span> names: q.<span class="fn">enqueue</span>(name)
+    <span class="kw">while</span> <span class="fn">len</span>(q) > <span class="num">1</span>:
+        <span class="kw">for</span> _ <span class="kw">in range</span>(num):
+            q.<span class="fn">enqueue</span>(q.<span class="fn">dequeue</span>()) <span class="cm"># oper melingkar</span>
+        q.<span class="fn">dequeue</span>()  <span class="cm"># ← tersingkir!</span>
+    <span class="kw">return</span> q.<span class="fn">dequeue</span>()  <span class="cm"># pemenang!</span>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     KASUS 3: PRIORITY QUEUE RS
+════════════════════════════════════════════════════ -->
+<div class="content" id="case-3">
+  <div class="case-header">
+    <span class="case-badge" style="background:rgba(16,185,129,0.15);color:var(--accent3);border:1px solid rgba(16,185,129,0.3)">KASUS 3</span>
+    <div>
+      <h2>Antrian Rumah Sakit — Priority Queue</h2>
+      <p>Pasien darurat didahulukan · Prioritas sama → FIFO</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat-label">Total Pasien:</span><span class="stat-val" id="p3-total">0</span></div>
+    <div class="stat"><span class="stat-label">Dilayani:</span><span class="stat-val" id="p3-served">0</span></div>
+    <div class="stat"><span class="stat-label">Berikutnya:</span><span class="stat-val" id="p3-next" style="color:var(--accent4)">—</span></div>
+  </div>
+
+  <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap">
+    <span style="font-size:0.72rem;background:rgba(255,68,68,0.2);color:#ff6666;padding:0.2rem 0.6rem;border-radius:4px;border:1px solid rgba(255,68,68,0.3)">🔴 0 = KRITIS</span>
+    <span style="font-size:0.72rem;background:rgba(245,158,11,0.2);color:#fbbf24;padding:0.2rem 0.6rem;border-radius:4px;border:1px solid rgba(245,158,11,0.3)">🟡 1 = DARURAT</span>
+    <span style="font-size:0.72rem;background:rgba(59,130,246,0.2);color:#60a5fa;padding:0.2rem 0.6rem;border-radius:4px;border:1px solid rgba(59,130,246,0.3)">🔵 2 = MENENGAH</span>
+    <span style="font-size:0.72rem;background:rgba(34,197,94,0.2);color:#4ade80;padding:0.2rem 0.6rem;border-radius:4px;border:1px solid rgba(34,197,94,0.3)">🟢 3 = RINGAN</span>
+  </div>
+
+  <div class="arena">
+    <div class="arena-title">🏥 Daftar Antrian (diurutkan prioritas + FIFO)</div>
+    <div id="p3-queue" style="display:flex;flex-direction:column;gap:0.4rem;min-height:60px"></div>
+    <div id="p3-empty" style="color:var(--muted);font-size:0.82rem;display:none">Queue kosong — tambahkan pasien!</div>
+  </div>
+
+  <div class="controls">
+    <div class="input-group">
+      <input type="text" id="p3-name" placeholder="Nama Pasien" style="width:130px">
+      <select id="p3-prio" style="width:130px">
+        <option value="0">0 - Kritis 🔴</option>
+        <option value="1">1 - Darurat 🟡</option>
+        <option value="2">2 - Menengah 🔵</option>
+        <option value="3">3 - Ringan 🟢</option>
+      </select>
+    </div>
+    <button class="btn btn-success" onclick="p3Enqueue()">➕ Enqueue Pasien</button>
+    <button class="btn btn-danger" id="p3-deq-btn" onclick="p3Dequeue()">✅ Layani (Dequeue)</button>
+    <button class="btn btn-warning" onclick="p3LoadDemo()">📋 Load Demo</button>
+    <button class="btn btn-reset" onclick="p3Reset()">↺ Reset</button>
+  </div>
+
+  <div class="log" id="p3-log"><div class="log-entry info">// Tambahkan pasien dengan prioritas berbeda!</div></div>
+
+  <div class="code-block">
+pq = <span class="fn">BPriorityQueue</span>(<span class="num">4</span>)   <span class="cm"># 4 level (0-3)</span>
+pq.<span class="fn">enqueue</span>(<span class="str">"Budi"</span>,  <span class="num">3</span>)  <span class="cm"># ringan</span>
+pq.<span class="fn">enqueue</span>(<span class="str">"Ani"</span>,   <span class="num">0</span>)  <span class="cm"># kritis!</span>
+pq.<span class="fn">enqueue</span>(<span class="str">"Citra"</span>, <span class="num">2</span>)  <span class="cm"># menengah</span>
+pq.<span class="fn">enqueue</span>(<span class="str">"Dedi"</span>,  <span class="num">0</span>)  <span class="cm"># kritis!</span>
+pq.<span class="fn">enqueue</span>(<span class="str">"Eka"</span>,   <span class="num">1</span>)  <span class="cm"># darurat</span>
+<span class="cm"># → Output: Ani, Dedi, Eka, Citra, Budi</span>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     KASUS 4: BFS
+════════════════════════════════════════════════════ -->
+<div class="content" id="case-4">
+  <div class="case-header">
+    <span class="case-badge" style="background:rgba(245,158,11,0.15);color:var(--accent4);border:1px solid rgba(245,158,11,0.3)">KASUS 4</span>
+    <div>
+      <h2>BFS — Breadth-First Search</h2>
+      <p>Penjelajahan graf level demi level menggunakan queue</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat-label">Node dikunjungi:</span><span class="stat-val" id="p4-visited-count">0</span></div>
+    <div class="stat"><span class="stat-label">Queue saat ini:</span><span class="stat-val" id="p4-queue-display">[ ]</span></div>
+    <div class="stat"><span class="stat-label">Level:</span><span class="stat-val" id="p4-level">—</span></div>
+  </div>
+
+  <div class="arena" style="min-height:240px">
+    <div class="arena-title">🔍 Graf — klik node untuk mulai BFS dari sana</div>
+    <div class="graph-wrap" id="p4-graph"></div>
+  </div>
+
+  <div class="arena" style="margin-top:1rem">
+    <div class="arena-title">📋 BFS Queue</div>
+    <div class="queue-label">
+      <span style="color:var(--accent3)">← DEPAN (diproses)</span>
+      <span style="color:var(--accent4)">BELAKANG (baru masuk) →</span>
+    </div>
+    <div class="queue-track" id="p4-queue"></div>
+    <div id="p4-empty" style="color:var(--muted);font-size:0.82rem">Klik node di graf atau tombol BFS</div>
+  </div>
+
+  <div class="controls">
+    <div class="input-group">
+      <label style="font-size:0.8rem;color:var(--muted)">Mulai dari:</label>
+      <select id="p4-start" style="width:80px">
+        <option>A</option><option>B</option><option>C</option>
+        <option>D</option><option>E</option><option>F</option>
+        <option>G</option>
+      </select>
+    </div>
+    <button class="btn btn-warning" onclick="p4StartBFS()">▶ Mulai BFS</button>
+    <button class="btn btn-primary" id="p4-step-btn" onclick="p4Step()" disabled>⏩ Next Step</button>
+    <button class="btn btn-success" id="p4-auto-btn" onclick="p4Auto()" disabled>⚡ Auto Run</button>
+    <button class="btn btn-reset" onclick="p4Reset()">↺ Reset</button>
+  </div>
+
+  <div class="log" id="p4-log"><div class="log-entry info">// Pilih node awal, lalu klik "Mulai BFS"</div></div>
+
+  <div class="code-block">
+<span class="kw">def</span> <span class="fn">bfs</span>(graph, start):
+    visited = <span class="fn">set</span>()
+    queue = Queue()
+    queue.<span class="fn">enqueue</span>(start); visited.<span class="fn">add</span>(start)
+    <span class="kw">while not</span> queue.<span class="fn">isEmpty</span>():
+        node = queue.<span class="fn">dequeue</span>()  <span class="cm"># proses node</span>
+        <span class="fn">print</span>(node)
+        <span class="kw">for</span> neighbor <span class="kw">in</span> graph[node]:
+            <span class="kw">if</span> neighbor <span class="kw">not in</span> visited:
+                visited.<span class="fn">add</span>(neighbor)
+                queue.<span class="fn">enqueue</span>(neighbor) <span class="cm"># level berikutnya</span>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     KASUS 5: LOKET BANDARA
+════════════════════════════════════════════════════ -->
+<div class="content" id="case-5">
+  <div class="case-header">
+    <span class="case-badge" style="background:rgba(239,68,68,0.15);color:var(--accent5);border:1px solid rgba(239,68,68,0.3)">KASUS 5</span>
+    <div>
+      <h2>Simulasi Loket Tiket Bandara</h2>
+      <p>Discrete event simulation · hitung rata-rata waktu tunggu penumpang</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat-label">Menit simulasi:</span><span class="stat-val" id="p5-tick">0</span></div>
+    <div class="stat"><span class="stat-label">Terlayani:</span><span class="stat-val" id="p5-served">0</span></div>
+    <div class="stat"><span class="stat-label">Avg Tunggu:</span><span class="stat-val" id="p5-avgwait" style="color:var(--accent4)">0.00 mnt</span></div>
+    <div class="stat"><span class="stat-label">In Queue:</span><span class="stat-val" id="p5-qsize">0</span></div>
+  </div>
+
+  <div class="sim-grid">
+    <div class="sim-panel">
+      <h4>Antrian Penumpang</h4>
+      <div id="p5-queue" style="display:flex;flex-direction:column;gap:0.3rem;max-height:160px;overflow-y:auto"></div>
+      <div id="p5-qempty" style="color:var(--muted);font-size:0.78rem">Kosong</div>
+    </div>
+    <div class="sim-panel">
+      <h4>Agen Tiket</h4>
+      <div id="p5-agents"></div>
+    </div>
+  </div>
+
+  <!-- timeline bar -->
+  <div class="arena" style="padding:1rem">
+    <div class="arena-title">📊 Timeline Kedatangan</div>
+    <div id="p5-timeline" style="display:flex;gap:2px;flex-wrap:wrap;min-height:30px;align-items:flex-end"></div>
+  </div>
+
+  <div class="controls">
+    <div class="input-group">
+      <label style="font-size:0.78rem;color:var(--muted)">Agen:</label>
+      <input type="number" id="p5-nagents" value="2" min="1" max="5" style="width:55px">
+      <label style="font-size:0.78rem;color:var(--muted)">Interval tiba:</label>
+      <input type="number" id="p5-interval" value="4" min="1" max="15" style="width:55px">
+      <label style="font-size:0.78rem;color:var(--muted)">Layanan (mnt):</label>
+      <input type="number" id="p5-service" value="6" min="1" max="20" style="width:55px">
+    </div>
+    <button class="btn btn-danger" onclick="p5Setup()">⚙ Setup</button>
+    <button class="btn btn-primary" id="p5-run-btn" onclick="p5ToggleRun()" disabled>▶ Jalankan</button>
+    <button class="btn btn-reset" onclick="p5Reset()">↺ Reset</button>
+    <div class="speed-row">
+      <span>Kecepatan:</span>
+      <input type="range" id="p5-speed" min="100" max="1000" value="600" step="100">
+    </div>
+  </div>
+
+  <div class="log" id="p5-log"><div class="log-entry info">// Atur parameter, klik Setup lalu Jalankan!</div></div>
+
+  <div class="code-block">
+<span class="kw">for</span> curTime <span class="kw">in range</span>(numMinutes + <span class="num">1</span>):
+    <span class="fn">handleArrival</span>(curTime)      <span class="cm"># R1: tiba? → enqueue</span>
+    <span class="fn">handleBeginService</span>(curTime)  <span class="cm"># R2: agen free? → dequeue</span>
+    <span class="fn">handleEndService</span>(curTime)    <span class="cm"># R3: selesai? → agen free</span>
+<span class="cm"># avg_wait = totalWait / numServed</span>
+</div>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════
+function log(id, msg, cls='ok') {
+  const el = document.getElementById(id);
+  const d = document.createElement('div');
+  d.className = 'log-entry ' + cls;
+  d.textContent = msg;
+  el.prepend(d);
+  while(el.children.length > 30) el.removeChild(el.lastChild);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function switchCase(n) {
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('case-'+n).classList.add('active');
+  document.querySelector(`[data-case="${n}"]`).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+//  KASUS 1: PRINTER QUEUE
+// ═══════════════════════════════════════════════════
+let p1Queue = [];
+let p1Printed = 0;
+let p1AutoRunning = false;
+
+const docColors = {
+  'laporan.pdf':      '#00d4ff', 'tugas.docx':       '#7c3aed',
+  'foto.jpg':         '#10b981', 'presentasi.pptx':  '#f59e0b',
+  'spreadsheet.xlsx': '#ef4444', 'skripsi.pdf':       '#ec4899',
+};
+
+function p1Render() {
+  const track = document.getElementById('p1-queue');
+  const emptyMsg = document.getElementById('p1-empty');
+  track.innerHTML = '';
+  if(p1Queue.length === 0) { emptyMsg.style.display='block'; }
+  else { emptyMsg.style.display='none'; }
+  p1Queue.forEach((doc, i) => {
+    const col = docColors[doc] || '#94a3b8';
+    const node = document.createElement('div');
+    node.className = 'q-node';
+    node.innerHTML = `
+      <div class="q-box" style="background:${col}22;border-color:${col};color:${col}">
+        ${doc.length > 8 ? doc.substring(0,6)+'...' : doc}
+      </div>
+      <div class="q-idx">[${i}]${i===0?' ←front':''}</div>
+    `;
+    track.appendChild(node);
+    if(i < p1Queue.length-1) {
+      const arr = document.createElement('div');
+      arr.className = 'arrow-right'; arr.textContent='→';
+      track.appendChild(arr);
+    }
+  });
+  document.getElementById('p1-size').textContent = p1Queue.length;
+  document.getElementById('p1-printed').textContent = p1Printed;
+  document.getElementById('p1-deq-btn').disabled = p1Queue.length === 0;
+}
+
+function p1Enqueue() {
+  const doc = document.getElementById('p1-doc').value;
+  p1Queue.push(doc);
+  log('p1-log', `✉ enqueue("${doc}") → rear idx ${p1Queue.length-1}`, 'info');
+  p1Render();
+}
+
+function p1Dequeue() {
+  if(p1Queue.length === 0) { log('p1-log','⚠ Queue kosong!','err'); return; }
+  const track = document.getElementById('p1-queue');
+  const firstNode = track.querySelector('.q-node');
+  if(firstNode) { firstNode.classList.add('leaving'); }
+  setTimeout(() => {
+    const doc = p1Queue.shift();
+    p1Printed++;
+    document.getElementById('p1-status').textContent = `🖨 ${doc}`;
+    document.getElementById('p1-status').style.color = 'var(--accent4)';
+    log('p1-log', `🖨 Mencetak: "${doc}" ← dequeue dari front`, 'ok');
+    setTimeout(() => {
+      document.getElementById('p1-status').textContent = 'IDLE';
+      document.getElementById('p1-status').style.color = 'var(--accent3)';
+    }, 800);
+    p1Render();
+  }, 300);
+}
+
+async function p1AutoPrint() {
+  if(p1AutoRunning || p1Queue.length===0) return;
+  p1AutoRunning = true;
+  while(p1Queue.length > 0) { p1Dequeue(); await sleep(900); }
+  p1AutoRunning = false;
+}
+
+function p1Reset() {
+  p1Queue=[]; p1Printed=0;
+  document.getElementById('p1-status').textContent='IDLE';
+  document.getElementById('p1-status').style.color='var(--accent3)';
+  document.getElementById('p1-log').innerHTML='<div class="log-entry info">// Reset. Siap menerima dokumen.</div>';
+  p1Render();
+}
+
+// init 3 docs
+p1Queue = ['laporan.pdf','tugas.docx','foto.jpg'];
+p1Render();
+
+// ═══════════════════════════════════════════════════
+//  KASUS 2: HOT POTATO
+// ═══════════════════════════════════════════════════
+let p2Queue = [];
+let p2Running = false;
+let p2AutoTimer = null;
+
+const players = ['Andi','Budi','Citra','Dedi','Eka','Fara','Gita','Hana'];
+const playerColors = ['#00d4ff','#7c3aed','#10b981','#f59e0b','#ef4444','#ec4899','#06b6d4','#84cc16'];
+
+function p2Render() {
+  const wrap = document.getElementById('p2-circle-wrap');
+  wrap.innerHTML = '';
+  p2Queue.forEach((name, i) => {
+    const isHolder = i === 0;
+    const col = playerColors[players.indexOf(name) % playerColors.length];
+    const chip = document.createElement('div');
+    chip.style.cssText = `
+      padding:0.45rem 0.9rem;border-radius:999px;font-size:0.82rem;font-weight:700;
+      background:${isHolder ? col : col+'22'};
+      color:${isHolder ? '#000' : col};
+      border:2px solid ${col};
+      animation:popIn 0.25s ease;
+      position:relative;
+    `;
+    chip.textContent = (isHolder ? '🥔 ' : '') + name;
+    if(isHolder) {
+      chip.title = 'Pemegang kentang saat ini';
+    }
+    wrap.appendChild(chip);
+  });
+  document.getElementById('p2-remaining').textContent = p2Queue.length;
+}
+
+function p2Setup() {
+  p2Queue = [...players];
+  document.getElementById('p2-winner').textContent = '—';
+  document.getElementById('p2-step-btn').disabled = false;
+  document.getElementById('p2-auto-btn').disabled = false;
+  log('p2-log','🎮 Game dimulai dengan '+ p2Queue.length +' pemain','info');
+  p2Render();
+}
+
+function p2Step() {
+  if(p2Queue.length <= 1) return;
+  const N = parseInt(document.getElementById('p2-n').value) || 3;
+  let names = [...p2Queue];
+  for(let i=0; i<N; i++) { names.push(names.shift()); }
+  const eliminated = names.shift();
+  p2Queue = names;
+  log('p2-log', `❌ ${eliminated} tersingkir setelah ${N} kali oper!`, 'warn');
+  if(p2Queue.length === 1) {
+    log('p2-log', `🏆 PEMENANG: ${p2Queue[0]}!`, 'ok');
+    document.getElementById('p2-winner').textContent = p2Queue[0];
+    document.getElementById('p2-step-btn').disabled = true;
+    document.getElementById('p2-auto-btn').disabled = true;
+  }
+  p2Render();
+}
+
+async function p2AutoPlay() {
+  if(p2Running) return;
+  p2Running = true;
+  document.getElementById('p2-running-badge').style.display='inline-flex';
+  document.getElementById('p2-auto-btn').disabled = true;
+  while(p2Queue.length > 1) { p2Step(); await sleep(700); }
+  p2Running = false;
+  document.getElementById('p2-running-badge').style.display='none';
+}
+
+function p2Reset() {
+  p2Queue = [];
+  p2Running = false;
+  document.getElementById('p2-running-badge').style.display='none';
+  document.getElementById('p2-circle-wrap').innerHTML='';
+  document.getElementById('p2-remaining').textContent='0';
+  document.getElementById('p2-winner').textContent='—';
+  document.getElementById('p2-step-btn').disabled=true;
+  document.getElementById('p2-auto-btn').disabled=true;
+  document.getElementById('p2-log').innerHTML='<div class="log-entry info">// Reset. Klik "Setup Pemain".</div>';
+}
+
+// ═══════════════════════════════════════════════════
+//  KASUS 3: PRIORITY QUEUE
+// ═══════════════════════════════════════════════════
+let p3Queue = []; // {name, prio, arrive}
+let p3Serial = 0;
+let p3Served = 0;
+
+const prioLabel  = ['🔴 KRITIS','🟡 DARURAT','🔵 MENENGAH','🟢 RINGAN'];
+const prioClass  = ['prio-0','prio-1','prio-2','prio-3'];
+const prioColors = ['#ff4444','#f59e0b','#3b82f6','#22c55e'];
+
+function p3Sort() {
+  p3Queue.sort((a,b) => a.prio-b.prio || a.arrive-b.arrive);
+}
+
+function p3Render() {
+  const el = document.getElementById('p3-queue');
+  const emp = document.getElementById('p3-empty');
+  el.innerHTML='';
+  if(p3Queue.length===0){ emp.style.display='block'; }
+  else { emp.style.display='none'; }
+  p3Queue.forEach((p,i) => {
+    const row = document.createElement('div');
+    row.style.cssText=`display:flex;align-items:center;gap:0.6rem;padding:0.35rem 0.75rem;
+      border-radius:0.4rem;border:1px solid ${prioColors[p.prio]}44;
+      background:${prioColors[p.prio]}11;animation:popIn 0.25s ease;`;
+    row.innerHTML=`
+      <span style="font-size:0.72rem;font-weight:700;color:${prioColors[p.prio]};width:90px;font-family:'JetBrains Mono',monospace">${prioLabel[p.prio]}</span>
+      <span style="font-weight:600;flex:1">${p.name}</span>
+      ${i===0?'<span style="font-size:0.7rem;color:var(--accent3);font-weight:700">← BERIKUTNYA</span>':''}
+    `;
+    el.appendChild(row);
+  });
+  document.getElementById('p3-total').textContent = p3Queue.length;
+  document.getElementById('p3-served').textContent = p3Served;
+  document.getElementById('p3-next').textContent = p3Queue.length>0 ? p3Queue[0].name : '—';
+  document.getElementById('p3-deq-btn').disabled = p3Queue.length===0;
+}
+
+function p3Enqueue() {
+  const name = document.getElementById('p3-name').value.trim() || 'Pasien';
+  const prio = parseInt(document.getElementById('p3-prio').value);
+  p3Queue.push({name, prio, arrive: p3Serial++});
+  p3Sort();
+  log('p3-log', `➕ ${name} masuk — Prioritas: ${prioLabel[prio]}`, prio<=1?'warn':'ok');
+  p3Render();
+}
+
+function p3Dequeue() {
+  if(p3Queue.length===0) return;
+  const p = p3Queue.shift();
+  p3Served++;
+  log('p3-log', `✅ Melayani: ${p.name} [${prioLabel[p.prio]}]`, 'ok');
+  p3Render();
+}
+
+function p3LoadDemo() {
+  const demo = [
+    {name:'Budi',prio:3},{name:'Ani',prio:0},{name:'Citra',prio:2},
+    {name:'Dedi',prio:0},{name:'Eka',prio:1}
+  ];
+  demo.forEach(d => { p3Queue.push({...d, arrive:p3Serial++}); });
+  p3Sort();
+  log('p3-log','📋 Demo pasien dimuat: Budi(3), Ani(0), Citra(2), Dedi(0), Eka(1)','info');
+  p3Render();
+}
+
+function p3Reset() {
+  p3Queue=[]; p3Serial=0; p3Served=0;
+  document.getElementById('p3-log').innerHTML='<div class="log-entry info">// Reset.</div>';
+  p3Render();
+}
+
+p3LoadDemo();
+
+// ═══════════════════════════════════════════════════
+//  KASUS 4: BFS
+// ═══════════════════════════════════════════════════
+const graph4 = {
+  A:['B','C'],B:['A','D','E'],C:['A','F'],
+  D:['B'],E:['B','G'],F:['C','G'],G:['E','F']
+};
+const nodePos = {
+  A:{x:50,y:50}, B:{x:20,y:50}, C:{x:80,y:50},
+  D:{x:5,y:75},  E:{x:35,y:75},F:{x:65,y:75},
+  G:{x:50,y:90}
+};
+
+let bfsQueue=[], bfsVisited=new Set(), bfsSteps=[], bfsStepIdx=0;
+let bfsAutoTimer=null;
+
+function p4BuildSVG() {
+  const wrap = document.getElementById('p4-graph');
+  wrap.innerHTML = '';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 100 100');
+  // edges
+  const edges = [['A','B'],['A','C'],['B','D'],['B','E'],['C','F'],['E','G'],['F','G']];
+  edges.forEach(([u,v]) => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', nodePos[u].x); line.setAttribute('y1', nodePos[u].y);
+    line.setAttribute('x2', nodePos[v].x); line.setAttribute('y2', nodePos[v].y);
+    line.setAttribute('stroke','#1e2d45'); line.setAttribute('stroke-width','0.8');
+    line.setAttribute('id',`edge-${u}-${v}`);
+    svg.appendChild(line);
+  });
+  // nodes
+  Object.entries(nodePos).forEach(([n,pos]) => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','gnode');
+    g.setAttribute('id',`gnode-${n}`);
+    g.style.cursor='pointer';
+    g.onclick = ()=>{ document.getElementById('p4-start').value=n; };
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',pos.x); c.setAttribute('cy',pos.y); c.setAttribute('r','6');
+    c.setAttribute('fill','#1e293b'); c.setAttribute('stroke','#334155');
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',pos.x); t.setAttribute('y',pos.y);
+    t.textContent=n;
+    g.appendChild(c); g.appendChild(t);
+    svg.appendChild(g);
+  });
+  wrap.appendChild(svg);
+}
+
+function p4ColorNode(n, col, strokeCol) {
+  const c = document.querySelector(`#gnode-${n} circle`);
+  if(c){ c.setAttribute('fill', col); c.setAttribute('stroke', strokeCol); }
+}
+
+function p4RenderBFSQueue() {
+  const track = document.getElementById('p4-queue');
+  const emp = document.getElementById('p4-empty');
+  track.innerHTML='';
+  if(bfsQueue.length===0){ emp.style.display='block'; emp.textContent='Queue kosong'; }
+  else { emp.style.display='none'; }
+  bfsQueue.forEach((n,i) => {
+    const node = document.createElement('div');
+    node.className='q-node';
+    node.innerHTML=`<div class="q-box" style="background:#f59e0b22;border-color:var(--accent4);color:var(--accent4);width:48px;height:48px">${n}</div><div class="q-idx">[${i}]</div>`;
+    track.appendChild(node);
+    if(i<bfsQueue.length-1){const a=document.createElement('div');a.className='arrow-right';a.textContent='→';track.appendChild(a);}
+  });
+  document.getElementById('p4-queue-display').textContent = '[ '+bfsQueue.join(', ')+' ]';
+  document.getElementById('p4-visited-count').textContent = bfsVisited.size;
+}
+
+function p4StartBFS() {
+  p4Reset();
+  const start = document.getElementById('p4-start').value;
+  bfsQueue=[start]; bfsVisited=new Set([start]);
+  p4ColorNode(start,'#f59e0b88','#f59e0b');
+  bfsSteps=[];
+  // precompute steps
+  const q=[start], vis=new Set([start]);
+  while(q.length>0) {
+    const node=q.shift();
+    bfsSteps.push({type:'process', node});
+    for(const nb of graph4[node]) {
+      if(!vis.has(nb)) { vis.add(nb); q.push(nb); bfsSteps.push({type:'enqueue',node:nb,from:node}); }
+    }
+  }
+  bfsStepIdx=0;
+  document.getElementById('p4-step-btn').disabled=false;
+  document.getElementById('p4-auto-btn').disabled=false;
+  log('p4-log', `▶ BFS mulai dari node "${start}"`, 'info');
+  p4RenderBFSQueue();
+}
+
+function p4Step() {
+  if(bfsStepIdx>=bfsSteps.length) { log('p4-log','✅ BFS selesai! Semua node dikunjungi.','ok'); return; }
+  const step = bfsSteps[bfsStepIdx++];
+  if(step.type==='process') {
+    bfsQueue.shift();
+    p4ColorNode(step.node,'#10b98166','#10b981');
+    log('p4-log', `📍 Proses node "${step.node}" ← dequeue`, 'ok');
+    // update level
+    const lvl = bfsVisited.size;
+    document.getElementById('p4-level').textContent = step.node;
+  } else {
+    bfsQueue.push(step.node);
+    bfsVisited.add(step.node);
+    p4ColorNode(step.node,'#f59e0b44','#f59e0b');
+    log('p4-log', `➕ enqueue("${step.node}") — tetangga dari "${step.from}"`, 'info');
+    // color edge
+    const svg = document.querySelector('#p4-graph svg');
+    if(svg){
+      const u=step.from, v=step.node;
+      const edgeId = [`edge-${u}-${v}`,`edge-${v}-${u}`];
+      edgeId.forEach(id=>{ const l=svg.getElementById(id); if(l){l.setAttribute('stroke','#f59e0b');l.setAttribute('stroke-width','1.2');} });
+    }
+  }
+  p4RenderBFSQueue();
+}
+
+async function p4Auto() {
+  document.getElementById('p4-auto-btn').disabled=true;
+  while(bfsStepIdx<bfsSteps.length) { p4Step(); await sleep(600); }
+  log('p4-log','✅ BFS selesai!','ok');
+}
+
+function p4Reset() {
+  bfsQueue=[]; bfsVisited=new Set(); bfsSteps=[]; bfsStepIdx=0;
+  clearInterval(bfsAutoTimer);
+  p4BuildSVG();
+  document.getElementById('p4-step-btn').disabled=true;
+  document.getElementById('p4-auto-btn').disabled=true;
+  document.getElementById('p4-empty').style.display='block';
+  document.getElementById('p4-queue').innerHTML='';
+  document.getElementById('p4-visited-count').textContent='0';
+  document.getElementById('p4-queue-display').textContent='[ ]';
+  document.getElementById('p4-level').textContent='—';
+  document.getElementById('p4-log').innerHTML='<div class="log-entry info">// Pilih node awal, klik "Mulai BFS"</div>';
+}
+
+p4BuildSVG();
+
+// ═══════════════════════════════════════════════════
+//  KASUS 5: AIRPORT SIMULATION
+// ═══════════════════════════════════════════════════
+let p5Queue=[], p5Agents=[], p5Tick=0, p5TotalWait=0, p5Served=0;
+let p5Timer=null, p5Running=false, p5PassId=0;
+let p5NAgents=2, p5Interval=4, p5Service=6;
+let p5Arrivals=[];
+
+function p5Setup() {
+  p5Reset();
+  p5NAgents = parseInt(document.getElementById('p5-nagents').value)||2;
+  p5Interval = parseInt(document.getElementById('p5-interval').value)||4;
+  p5Service  = parseInt(document.getElementById('p5-service').value)||6;
+  p5Agents = Array.from({length:p5NAgents}, (_,i)=>({id:i+1,busy:false,passenger:null,finishAt:0}));
+  p5RenderAgents();
+  document.getElementById('p5-run-btn').disabled=false;
+  log('p5-log', `⚙ Setup: ${p5NAgents} agen, datang tiap ~${p5Interval} mnt, layanan ~${p5Service} mnt`, 'info');
+}
+
+function p5RenderAgents() {
+  const el = document.getElementById('p5-agents');
+  el.innerHTML='';
+  p5Agents.forEach(a => {
+    const row = document.createElement('div');
+    row.className='agent';
+    row.innerHTML=`
+      <div class="agent-dot" style="background:${a.busy?'#10b981':'#334155'}"></div>
+      <span style="font-size:0.82rem;font-family:'JetBrains Mono',monospace">Agen ${a.id}: ${a.busy ? '🧳 '+a.passenger : '⏳ Menunggu'}</span>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function p5RenderQueue() {
+  const el = document.getElementById('p5-queue');
+  const emp = document.getElementById('p5-qempty');
+  el.innerHTML='';
+  if(p5Queue.length===0){ emp.style.display='block'; }
+  else {
+    emp.style.display='none';
+    p5Queue.slice(0,10).forEach((p,i) => {
+      const row=document.createElement('div');
+      row.style.cssText=`font-size:0.76rem;font-family:'JetBrains Mono',monospace;padding:0.15rem 0;color:${i===0?'var(--accent4)':'var(--muted)'}`;
+      row.textContent=`[${i}] ${p.name} (tiba:${p.arriveAt})`;
+      el.appendChild(row);
+    });
+    if(p5Queue.length>10){
+      const more=document.createElement('div');
+      more.style.cssText='font-size:0.72rem;color:var(--muted);margin-top:0.2rem';
+      more.textContent=`+${p5Queue.length-10} lainnya...`;
+      el.appendChild(more);
+    }
+  }
+  document.getElementById('p5-qsize').textContent=p5Queue.length;
+}
+
+function p5Tick2() {
+  p5Tick++;
+  document.getElementById('p5-tick').textContent=p5Tick;
+
+  // R1: arrival
+  if(Math.random() < 1/p5Interval) {
+    const pax={id:p5PassId++, name:`P${String(p5PassId).padStart(3,'0')}`, arriveAt:p5Tick, waitStart:p5Tick};
+    p5Queue.push(pax);
+    // timeline bar
+    const bar=document.createElement('div');
+    bar.style.cssText=`width:6px;height:${8+Math.random()*12}px;background:var(--accent1);border-radius:2px;opacity:0.7;`;
+    bar.title=`${pax.name} tiba menit ${p5Tick}`;
+    document.getElementById('p5-timeline').appendChild(bar);
+    log('p5-log',`[t=${p5Tick}] ✈ ${pax.name} tiba → enqueue (antrian:${p5Queue.length})`,'info');
+  }
+
+  // R3: end service
+  p5Agents.forEach(a => {
+    if(a.busy && p5Tick >= a.finishAt) {
+      p5Served++;
+      log('p5-log',`[t=${p5Tick}] ✅ Agen ${a.id} selesai: ${a.passenger}`,'ok');
+      a.busy=false; a.passenger=null; a.finishAt=0;
+    }
+  });
+
+  // R2: begin service
+  p5Agents.forEach(a => {
+    if(!a.busy && p5Queue.length>0) {
+      const pax=p5Queue.shift();
+      const waited = p5Tick - pax.waitStart;
+      p5TotalWait += waited;
+      a.busy=true; a.passenger=pax.name;
+      a.finishAt = p5Tick + p5Service + Math.floor(Math.random()*3-1);
+      log('p5-log',`[t=${p5Tick}] 🛂 Agen ${a.id} melayani ${pax.name} (tunggu:${waited} mnt)`,'warn');
+    }
+  });
+
+  p5RenderAgents();
+  p5RenderQueue();
+  document.getElementById('p5-served').textContent=p5Served;
+  const avg=p5Served>0?(p5TotalWait/p5Served).toFixed(2):'0.00';
+  document.getElementById('p5-avgwait').textContent=avg+' mnt';
+
+  if(p5Tick>=120) { p5Stop(); log('p5-log','[t=120] ⏹ Simulasi selesai (120 menit)','ok'); }
+}
+
+function p5ToggleRun() {
+  if(p5Running) { p5Stop(); }
+  else { p5Start(); }
+}
+
+function p5Start() {
+  p5Running=true;
+  document.getElementById('p5-run-btn').textContent='⏸ Pause';
+  const spd = 1100 - parseInt(document.getElementById('p5-speed').value);
+  p5Timer=setInterval(p5Tick2, Math.max(50, spd));
+}
+
+function p5Stop() {
+  p5Running=false;
+  document.getElementById('p5-run-btn').textContent='▶ Jalankan';
+  clearInterval(p5Timer);
+}
+
+function p5Reset() {
+  p5Stop();
+  p5Queue=[]; p5Agents=[]; p5Tick=0; p5TotalWait=0; p5Served=0; p5PassId=0; p5Arrivals=[];
+  document.getElementById('p5-tick').textContent='0';
+  document.getElementById('p5-served').textContent='0';
+  document.getElementById('p5-avgwait').textContent='0.00 mnt';
+  document.getElementById('p5-qsize').textContent='0';
+  document.getElementById('p5-agents').innerHTML='';
+  document.getElementById('p5-queue').innerHTML='';
+  document.getElementById('p5-qempty').style.display='block';
+  document.getElementById('p5-timeline').innerHTML='';
+  document.getElementById('p5-run-btn').disabled=true;
+  document.getElementById('p5-log').innerHTML='<div class="log-entry info">// Reset. Klik Setup untuk memulai ulang.</div>';
+}
+</script>
+</body>
+</html>

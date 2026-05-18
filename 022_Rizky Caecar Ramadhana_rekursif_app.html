@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tugas Rekursi — Visualisasi Interaktif</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f14;
+  --bg2: #141720;
+  --bg3: #1c2030;
+  --bg4: #242840;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.14);
+  --text: #e8eaf0;
+  --muted: #8890a8;
+  --dim: #555d7a;
+  --accent: #6c7fff;
+  --accent2: #a78bfa;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --pink: #f472b6;
+  --teal: #2dd4bf;
+  --glow: rgba(108,127,255,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;overflow-x:hidden}
+
+/* ── GRID NOISE OVERLAY ── */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.4;pointer-events:none;z-index:0}
+
+/* ── HEADER ── */
+header{position:relative;z-index:10;padding:28px 40px 0;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
+.logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.header-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.01em}
+.header-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.tabs{display:flex;gap:0;margin-left:auto;margin-bottom:-1px}
+.tab-btn{padding:10px 22px;font-size:13px;font-weight:500;font-family:'Outfit',sans-serif;cursor:pointer;border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0;background:none;color:var(--muted);transition:all .2s;white-space:nowrap}
+.tab-btn:hover{color:var(--text);background:var(--bg2)}
+.tab-btn.active{color:var(--text);background:var(--bg2);border-color:var(--border)}
+
+/* ── MAIN LAYOUT ── */
+.app{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 73px);position:relative;z-index:1}
+.left-pane{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.right-pane{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+
+/* ── CODE PANE ── */
+.pane-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.pane-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.pane-badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;background:var(--bg4);color:var(--accent);border:1px solid rgba(108,127,255,.25)}
+.run-btn{margin-left:auto;padding:6px 16px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .15s,transform .1s;letter-spacing:.03em}
+.run-btn:hover{opacity:.85}.run-btn:active{transform:scale(.97)}
+.run-btn.running{background:linear-gradient(135deg,var(--amber),#f97316)}
+
+pre.code-block{flex:1;overflow:auto;padding:20px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;tab-size:4;white-space:pre}
+pre.code-block::-webkit-scrollbar{width:6px;height:6px}
+pre.code-block::-webkit-scrollbar-track{background:transparent}
+pre.code-block::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+
+/* syntax highlight */
+.kw{color:#818cf8}.fn{color:#34d399}.st{color:#fbbf24}.cm{color:#4b5563;font-style:italic}.num{color:#fb923c}.cls{color:#c084fc}.param{color:#e8eaf0}
+
+/* ── VIZ PANE ── */
+.viz-area{flex:1;overflow:auto;padding:20px}
+.viz-area::-webkit-scrollbar{width:6px}
+.viz-area::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+
+.panel{display:none}.panel.active{display:block}
+
+/* ── CONTROLS ── */
+.ctrl-section{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.ctrl-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.ctrl-row:last-child{margin-bottom:0}
+.ctrl-label{font-size:12px;color:var(--muted);white-space:nowrap;min-width:80px}
+input[type=range]{flex:1;min-width:80px;accent-color:var(--accent);cursor:pointer;height:4px}
+select,input[type=number]{background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:5px 10px;font-size:12px;font-family:'Outfit',sans-serif;cursor:pointer}
+select:focus,input:focus{outline:none;border-color:var(--accent)}
+.val-badge{font-size:12px;font-weight:600;color:var(--accent);min-width:28px;text-align:right;font-family:'JetBrains Mono',monospace}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 14px;border-radius:6px;font-size:12px;font-weight:500;font-family:'Outfit',sans-serif;cursor:pointer;transition:all .15s;border:1px solid var(--border2);background:var(--bg4);color:var(--text)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.go:hover{opacity:.85}
+.btn.flash{background:var(--amber);border-color:var(--amber);color:#000}
+.btn.flash:hover{opacity:.85}
+.btn.danger{background:var(--bg4);border-color:var(--red);color:var(--red)}
+
+/* ── INFO BOX ── */
+.info-box{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:10px 14px;font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:14px;min-height:40px;transition:all .2s}
+.info-box b,.info-box span{color:var(--text)}
+.info-box.ok{border-left-color:var(--green)}
+.info-box.warn{border-left-color:var(--amber)}
+.info-box.err{border-left-color:var(--red)}
+
+/* ── STATS GRID ── */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center}
+.stat-val{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)}
+.stat-lbl{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+
+/* ── BOARD ── */
+.board-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:14px}
+.board{display:inline-grid;border-radius:8px;overflow:hidden;border:1px solid var(--border2);gap:1px;background:var(--border)}
+.cell{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;transition:background .15s,color .15s,transform .1s;position:relative;cursor:default}
+.cell.cl{background:#1e2540}.cell.cd{background:#151a2e}
+.cell.queen{background:var(--accent)!important;color:#fff;font-size:18px}
+.cell.try-cell{background:rgba(251,191,36,.15)!important;color:var(--amber)}
+.cell.guarded{background:rgba(248,113,113,.07)!important}
+.cell.k-start{background:var(--amber)!important;color:#000;font-size:15px}
+.cell.k-cur{background:var(--green)!important;color:#000}
+.cell.k-vis{background:rgba(52,211,153,.12)!important;color:var(--teal);font-size:11px}
+@keyframes cellPop{0%{transform:scale(.7)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
+.cell.pop{animation:cellPop .25s ease}
+.board-lbl{font-size:11px;color:var(--dim);font-family:'JetBrains Mono',monospace}
+
+/* ── ALGO TRACE ── */
+.trace-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px}
+.trace-title{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:8px}
+.trace-step{display:flex;align-items:flex-start;gap:8px;padding:5px 8px;border-radius:5px;font-size:11.5px;font-family:'JetBrains Mono',monospace;color:var(--dim);transition:all .15s}
+.trace-step.active{background:var(--glow);color:var(--text);border-left:2px solid var(--accent)}
+.trace-step:not(.active){border-left:2px solid transparent}
+.trace-num{color:var(--dim);min-width:16px;flex-shrink:0}
+
+/* ── KNAPSACK ── */
+.item-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.item-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;transition:all .2s;font-size:12px}
+.item-row.picked{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3)}
+.item-row.trying{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.3)}
+.item-row.dropped{opacity:.35}
+.item-icon{font-size:18px;width:24px;text-align:center}
+.item-name{color:var(--text);min-width:60px;font-weight:500}
+.bar-wrap{flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .3s}
+.item-w{font-family:'JetBrains Mono',monospace;color:var(--muted);min-width:38px;text-align:right}
+.item-tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;letter-spacing:.03em}
+.item-tag.yes{background:rgba(52,211,153,.15);color:var(--green)}
+.item-tag.try{background:rgba(251,191,36,.15);color:var(--amber)}
+.bag-viz{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px}
+.bag-bar{height:18px;background:var(--bg4);border-radius:6px;overflow:hidden;margin:8px 0;position:relative}
+.bag-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--teal));border-radius:6px;transition:width .35s}
+.bag-fill.over{background:linear-gradient(90deg,var(--red),var(--pink))}
+.bag-label{display:flex;justify-content:space-between;font-size:11px;font-family:'JetBrains Mono',monospace}
+.bag-items{display:flex;flex-wrap:wrap;gap:5px;min-height:28px;margin-top:8px}
+.bag-chip{padding:3px 9px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);border-radius:20px;font-size:11px;color:var(--green);font-family:'JetBrains Mono',monospace}
+
+/* ── KNIGHT MOVES VIZ ── */
+.move-viz{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.move-viz svg{display:block}
+
+/* ── SCROLLBAR STYLE ── */
+.viz-area::-webkit-scrollbar-track{background:var(--bg)}
+
+/* ── OUTPUT CONSOLE ── */
+.console-wrap{background:#0a0c10;border-top:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;max-height:200px}
+.console-header{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0}
+.console-title{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#4b5563;font-family:'JetBrains Mono',monospace}
+.console-dot{width:8px;height:8px;border-radius:50%}
+.console-output{flex:1;overflow-y:auto;padding:8px 14px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6b7280;min-height:60px;max-height:120px}
+.console-output::-webkit-scrollbar{width:4px}.console-output::-webkit-scrollbar-thumb{background:#1e2540;border-radius:2px}
+.console-input-row{display:flex;align-items:center;gap:6px;padding:6px 14px;border-top:1px solid rgba(255,255,255,0.05);flex-shrink:0}
+.console-prompt{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#4b5563}
+.console-input{flex:1;background:transparent;border:none;outline:none;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#e8eaf0;caret-color:var(--green)}
+.console-input::placeholder{color:#374151}
+.console .ok{color:var(--green)}.console .err{color:var(--red)}.console .info{color:var(--accent)}
+.console .warn{color:var(--amber)}.console .dim{color:#374151}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">∮</div>
+  <div>
+    <div class="header-title">Algoritma Rekursif</div>
+    <div class="header-sub">N-Queens · Knight's Tour · Knapsack</div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('queens')">♛ N-Queens</button>
+    <button class="tab-btn" onclick="switchTab('knight')">♞ Knight's Tour</button>
+    <button class="tab-btn" onclick="switchTab('knapsack')">⊛ Knapsack</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ═══════════ LEFT: CODE ═══════════ -->
+  <div class="left-pane">
+    <div class="pane-header">
+      <span class="pane-title">Source Code</span>
+      <span class="pane-badge" id="code-badge">n_queens.py</span>
+      <button class="run-btn" id="run-btn" onclick="runCode()">
+        <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><path d="M0 0l10 6-10 6z"/></svg>
+        Run
+      </button>
+    </div>
+    <pre class="code-block" id="code-block"></pre>
+    <div class="console-wrap">
+      <div class="console-header">
+        <div class="console-dot" style="background:#ff5f57"></div>
+        <div class="console-dot" style="background:#febc2e"></div>
+        <div class="console-dot" style="background:#28c840"></div>
+        <span class="console-title" style="margin-left:6px">Terminal Output</span>
+        <button onclick="clearConsole()" style="margin-left:auto;background:none;border:none;color:#374151;font-size:10px;font-family:JetBrains Mono,monospace;cursor:pointer;padding:0;letter-spacing:.05em">clear</button>
+      </div>
+      <div class="console-output" id="console"><span style="color:#374151"># Klik tombol Run untuk menjalankan kode...</span></div>
+      <div class="console-input-row" id="input-row" style="display:none">
+        <span class="console-prompt" id="input-prompt">&gt;&gt;&gt;&nbsp;</span>
+        <input class="console-input" id="console-input" placeholder="ketik input lalu Enter..." autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ RIGHT: VIZ ═══════════ -->
+  <div class="right-pane">
+    <div class="pane-header">
+      <span class="pane-title">Visualisasi</span>
+      <span class="pane-badge" id="viz-badge">Interaktif</span>
+    </div>
+    <div class="viz-area">
+
+      <!-- ══ N-QUEENS PANEL ══ -->
+      <div id="panel-queens" class="panel active">
+        <div class="ctrl-section">
+          <div class="ctrl-row">
+            <span class="ctrl-label">Ukuran n :</span>
+            <input type="range" min="4" max="8" value="5" id="qn" oninput="document.getElementById('qn-v').textContent=this.value+'×'+this.value;qReset()">
+            <span class="val-badge" id="qn-v">5×5</span>
+          </div>
+          <div class="ctrl-row">
+            <span class="ctrl-label">Kecepatan :</span>
+            <input type="range" min="60" max="950" value="500" id="q-spd">
+            <span style="font-size:11px;color:var(--dim)">cepat ←→ lambat</span>
+          </div>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn go" id="q-play-btn" onclick="qTogglePlay()">▶ Mulai</button>
+            <button class="btn flash" onclick="qSolveInstant()">⚡ Langsung</button>
+            <button class="btn danger" onclick="qReset()">↺ Reset</button>
+          </div>
+        </div>
+
+        <div class="info-box" id="q-info">Tekan <b>▶ Mulai</b> untuk menjalankan algoritma backtracking N-Queens langkah demi langkah.</div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-val" id="q-calls">0</div><div class="stat-lbl">Rekursi</div></div>
+          <div class="stat-card"><div class="stat-val" id="q-bt">0</div><div class="stat-lbl">Backtrack</div></div>
+          <div class="stat-card"><div class="stat-val" id="q-ratu">0</div><div class="stat-lbl">Ratu</div></div>
+        </div>
+
+        <div class="board-wrap">
+          <div class="board" id="q-board"></div>
+          <div class="board-lbl" id="q-lbl"></div>
+        </div>
+
+        <div class="trace-box">
+          <div class="trace-title">Trace Algoritma</div>
+          <div class="trace-step" id="tr0"><span class="trace-num">1</span>solveNQueens(board, col)</div>
+          <div class="trace-step" id="tr1"><span class="trace-num">2</span>if numQueens == size → return True  ← base case</div>
+          <div class="trace-step" id="tr2"><span class="trace-num">3</span>for row in range(n): check unguarded(row, col)</div>
+          <div class="trace-step" id="tr3"><span class="trace-num">4</span>placeQueen(row, col) → rekursi ke col+1</div>
+          <div class="trace-step" id="tr4"><span class="trace-num">5</span>removeQueen(row, col) → backtrack ↩</div>
+          <div class="trace-step" id="tr5"><span class="trace-num">6</span>return False → tidak ada posisi valid</div>
+        </div>
+      </div>
+
+      <!-- ══ KNIGHT PANEL ══ -->
+      <div id="panel-knight" class="panel">
+        <div class="ctrl-section">
+          <div class="ctrl-row">
+            <span class="ctrl-label">Papan :</span>
+            <select id="k-size" onchange="kReset()">
+              <option value="5" selected>5 × 5</option>
+              <option value="6">6 × 6</option>
+            </select>
+            <span class="ctrl-label" style="min-width:60px">Start :</span>
+            <select id="k-start" onchange="kReset()">
+              <option value="0,0">(0, 0)</option>
+              <option value="2,2">(2, 2)</option>
+              <option value="1,1">(1, 1)</option>
+              <option value="0,2">(0, 2)</option>
+            </select>
+          </div>
+          <div class="ctrl-row">
+            <span class="ctrl-label">Kecepatan :</span>
+            <input type="range" min="50" max="900" value="400" id="k-spd">
+          </div>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn go" id="k-play-btn" onclick="kTogglePlay()">▶ Animasi</button>
+            <button class="btn danger" onclick="kReset()">↺ Reset</button>
+          </div>
+        </div>
+
+        <div class="info-box" id="k-info">Pilih ukuran dan posisi awal, lalu tekan <b>▶ Animasi</b>.</div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-val" id="k-step">0</div><div class="stat-lbl">Langkah</div></div>
+          <div class="stat-card"><div class="stat-val" id="k-total">—</div><div class="stat-lbl">Total Petak</div></div>
+          <div class="stat-card"><div class="stat-val" id="k-pos">—</div><div class="stat-lbl">Posisi</div></div>
+        </div>
+
+        <div class="board-wrap">
+          <div class="board" id="k-board"></div>
+          <div class="board-lbl" id="k-lbl"></div>
+        </div>
+
+        <div class="move-viz">
+          <div class="trace-title" style="align-self:flex-start">Gerakan L-shape kuda dari posisi saat ini</div>
+          <svg id="k-move-svg" width="176" height="176" viewBox="0 0 176 176"></svg>
+        </div>
+      </div>
+
+      <!-- ══ KNAPSACK PANEL ══ -->
+      <div id="panel-knapsack" class="panel">
+        <div class="ctrl-section">
+          <div class="ctrl-row">
+            <span class="ctrl-label">Target :</span>
+            <input type="range" min="10" max="45" value="30" id="ks-target" oninput="document.getElementById('ks-tv').textContent=this.value+' kg';ksReset()">
+            <span class="val-badge" id="ks-tv">30 kg</span>
+          </div>
+          <div class="ctrl-row">
+            <span class="ctrl-label">Kecepatan :</span>
+            <input type="range" min="80" max="1100" value="600" id="ks-spd">
+          </div>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn go" id="ks-play-btn" onclick="ksTogglePlay()">▶ Mulai</button>
+            <button class="btn flash" onclick="ksInstant()">⚡ Langsung</button>
+            <button class="btn danger" onclick="ksReset()">↺ Reset</button>
+          </div>
+        </div>
+
+        <div class="info-box" id="ks-info">Tekan <b>▶ Mulai</b> untuk melihat rekursi memilih kombinasi barang.</div>
+
+        <div class="bag-viz">
+          <div class="bag-label">
+            <span id="ks-cur-w" style="color:var(--text);font-weight:600">0 kg</span>
+            <span id="ks-pct" style="color:var(--muted)">0%</span>
+            <span id="ks-target-lbl" style="color:var(--muted)">target: 30 kg</span>
+          </div>
+          <div class="bag-bar"><div class="bag-fill" id="ks-bar" style="width:0%"></div></div>
+          <div class="bag-items" id="ks-chips"></div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-val" id="ks-calls">0</div><div class="stat-lbl">Rekursi</div></div>
+          <div class="stat-card"><div class="stat-val" id="ks-bt">0</div><div class="stat-lbl">Backtrack</div></div>
+          <div class="stat-card"><div class="stat-val" id="ks-found">—</div><div class="stat-lbl">Status</div></div>
+        </div>
+
+        <div class="item-list" id="ks-list"></div>
+      </div>
+
+    </div><!-- /viz-area -->
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   SOURCE CODE STRINGS (Python, highlighted as HTML)
+════════════════════════════════════════════════════════════ */
+const CODES = {
+queens: `<span class="cm"># ─────────────────────────────────────────────────
+# Soal 1 : N-Queens Problem
+# Algoritma: Backtracking Rekursif
+# ─────────────────────────────────────────────────</span>
+
+<span class="kw">class</span> <span class="cls">NQueensBoard</span>:
+    <span class="cm">"""Papan N×N untuk masalah N-Queens (array 1-D)."""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="param">self</span>, <span class="param">n</span>):
+        self._size  = n
+        self._queens = [-<span class="num">1</span>] * n   <span class="cm"># queens[col] = row</span>
+        self._num_queens = <span class="num">0</span>
+
+    <span class="kw">def</span> <span class="fn">size</span>(<span class="param">self</span>):       <span class="kw">return</span> self._size
+    <span class="kw">def</span> <span class="fn">numQueens</span>(<span class="param">self</span>): <span class="kw">return</span> self._num_queens
+
+    <span class="kw">def</span> <span class="fn">unguarded</span>(<span class="param">self</span>, <span class="param">row</span>, <span class="param">col</span>):
+        <span class="cm">"""True jika (row,col) tidak diserang ratu manapun."""</span>
+        <span class="kw">for</span> c <span class="kw">in</span> range(col):
+            r = self._queens[c]
+            <span class="kw">if</span> r == row <span class="kw">or</span> abs(r - row) == abs(c - col):
+                <span class="kw">return False</span>
+        <span class="kw">return True</span>
+
+    <span class="kw">def</span> <span class="fn">placeQueen</span>(<span class="param">self</span>, <span class="param">row</span>, <span class="param">col</span>):
+        self._queens[col] = row
+        self._num_queens += <span class="num">1</span>
+
+    <span class="kw">def</span> <span class="fn">removeQueen</span>(<span class="param">self</span>, <span class="param">row</span>, <span class="param">col</span>):
+        self._queens[col] = -<span class="num">1</span>
+        self._num_queens -= <span class="num">1</span>
+
+    <span class="kw">def</span> <span class="fn">draw</span>(<span class="param">self</span>):
+        n = self._size
+        sep = <span class="st">'+'</span> + <span class="st">'---+'</span> * n
+        print(sep)
+        <span class="kw">for</span> r <span class="kw">in</span> range(n):
+            row = <span class="st">'|'</span>
+            <span class="kw">for</span> c <span class="kw">in</span> range(n):
+                row += <span class="st">' Q |'</span> <span class="kw">if</span> self._queens[c]==r <span class="kw">else</span> <span class="st">' . |'</span>
+            print(row); print(sep)
+
+
+<span class="kw">def</span> <span class="fn">solveNQueens</span>(<span class="param">board</span>, <span class="param">col</span>):
+    <span class="cm">"""Rekursif backtracking. Return True jika solusi ada."""</span>
+    <span class="cm"># Base case: semua ratu sudah ditempatkan</span>
+    <span class="kw">if</span> board.numQueens() == board.size():
+        <span class="kw">return True</span>
+
+    <span class="kw">for</span> row <span class="kw">in</span> range(board.size()):
+        <span class="kw">if</span> board.unguarded(row, col):
+            board.placeQueen(row, col)
+            <span class="kw">if</span> <span class="fn">solveNQueens</span>(board, col + <span class="num">1</span>):
+                <span class="kw">return True</span>
+            board.removeQueen(row, col)   <span class="cm"># ← backtrack</span>
+
+    <span class="kw">return False</span>   <span class="cm"># tidak ada posisi valid di kolom ini</span>
+
+
+<span class="cm"># ── MAIN ──────────────────────────────────────────</span>
+n = int(input(<span class="st">"Masukkan ukuran papan (n): "</span>))
+board = <span class="cls">NQueensBoard</span>(n)
+
+<span class="kw">if</span> <span class="fn">solveNQueens</span>(board, <span class="num">0</span>):
+    print(<span class="st">f"Solusi {n}-Queens ditemukan!"</span>)
+    print(<span class="st">f"Posisi ratu: {board._queens}"</span>)
+    board.draw()
+<span class="kw">else</span>:
+    print(<span class="st">"Tidak ada solusi."</span>)`,
+
+knight: `<span class="cm"># ─────────────────────────────────────────────────
+# Soal 2 : Knight's Tour (Tur Kuda)
+# Algoritma: Backtracking Rekursif (Warnsdorff heuristic)
+# ─────────────────────────────────────────────────</span>
+
+<span class="cm"># 8 kemungkinan gerakan kuda (L-shape)</span>
+MOVES = [(-<span class="num">2</span>,-<span class="num">1</span>), (-<span class="num">2</span>,+<span class="num">1</span>), (-<span class="num">1</span>,-<span class="num">2</span>), (-<span class="num">1</span>,+<span class="num">2</span>),
+         (+<span class="num">1</span>,-<span class="num">2</span>), (+<span class="num">1</span>,+<span class="num">2</span>), (+<span class="num">2</span>,-<span class="num">1</span>), (+<span class="num">2</span>,+<span class="num">1</span>)]
+
+
+<span class="kw">def</span> <span class="fn">valid_moves</span>(<span class="param">board</span>, <span class="param">r</span>, <span class="param">c</span>, <span class="param">n</span>):
+    <span class="cm">"""Kembalikan list gerak valid dari (r, c)."""</span>
+    <span class="kw">return</span> [(r+dr, c+dc)
+            <span class="kw">for</span> dr, dc <span class="kw">in</span> MOVES
+            <span class="kw">if</span> <span class="num">0</span> &lt;= r+dr &lt; n <span class="kw">and</span>
+               <span class="num">0</span> &lt;= c+dc &lt; n <span class="kw">and</span>
+               board[r+dr][c+dc] == <span class="num">0</span>]
+
+
+<span class="kw">def</span> <span class="fn">solveKnightsTour</span>(<span class="param">board</span>, <span class="param">r</span>, <span class="param">c</span>, <span class="param">move_num</span>, <span class="param">n</span>):
+    <span class="cm">"""Rekursif backtracking untuk Tur Kuda."""</span>
+    <span class="cm"># Base case: semua petak sudah dikunjungi</span>
+    <span class="kw">if</span> move_num > n * n:
+        <span class="kw">return True</span>
+
+    <span class="cm"># Urutkan gerakan berdasarkan Warnsdorff (least onward moves)</span>
+    nexts = <span class="fn">valid_moves</span>(board, r, c, n)
+    nexts.sort(key=<span class="kw">lambda</span> pos: len(<span class="fn">valid_moves</span>(board, pos[<span class="num">0</span>], pos[<span class="num">1</span>], n)))
+
+    <span class="kw">for</span> nr, nc <span class="kw">in</span> nexts:
+        board[nr][nc] = move_num
+        <span class="kw">if</span> <span class="fn">solveKnightsTour</span>(board, nr, nc, move_num+<span class="num">1</span>, n):
+            <span class="kw">return True</span>
+        board[nr][nc] = <span class="num">0</span>   <span class="cm"># backtrack</span>
+
+    <span class="kw">return False</span>
+
+
+<span class="kw">def</span> <span class="fn">print_board</span>(<span class="param">board</span>, <span class="param">n</span>):
+    w = len(str(n*n)) + <span class="num">2</span>
+    sep = <span class="st">'+'</span> + (<span class="st">'-'</span>*w+<span class="st">'+'</span>) * n
+    print(sep)
+    <span class="kw">for</span> r <span class="kw">in</span> range(n):
+        row = <span class="st">'|'</span> + <span class="st">'|'</span>.join(str(board[r][c]).center(w) <span class="kw">for</span> c <span class="kw">in</span> range(n)) + <span class="st">'|'</span>
+        print(row); print(sep)
+
+
+<span class="cm"># ── MAIN ──────────────────────────────────────────</span>
+n  = int(input(<span class="st">"Ukuran papan (5-8): "</span>))
+sr = int(input(<span class="st">f"Baris awal (0-{n-1}): "</span>))
+sc = int(input(<span class="st">f"Kolom awal (0-{n-1}): "</span>))
+
+board = [[<span class="num">0</span>]*n <span class="kw">for</span> _ <span class="kw">in</span> range(n)]
+board[sr][sc] = <span class="num">1</span>
+
+<span class="kw">if</span> <span class="fn">solveKnightsTour</span>(board, sr, sc, <span class="num">2</span>, n):
+    print(<span class="st">f"\\nTur Kuda {n}×{n} (mulai ({sr},{sc})):"</span>)
+    <span class="fn">print_board</span>(board, n)
+<span class="kw">else</span>:
+    print(<span class="st">"Tidak ditemukan solusi."</span>)`,
+
+knapsack: `<span class="cm"># ─────────────────────────────────────────────────
+# Soal 3 : Knapsack Problem (0/1)
+# Algoritma: Rekursi + Backtracking
+# ─────────────────────────────────────────────────</span>
+
+<span class="kw">def</span> <span class="fn">knapsack</span>(<span class="param">items</span>, <span class="param">idx</span>, <span class="param">remaining</span>, <span class="param">chosen</span>):
+    <span class="cm">"""
+    Cari kombinasi items yang totalnya tepat = remaining.
+    Kembalikan True jika solusi ditemukan.
+    """</span>
+    <span class="cm"># Base case 1: tepat pas</span>
+    <span class="kw">if</span> remaining == <span class="num">0</span>:
+        <span class="kw">return True</span>
+
+    <span class="cm"># Base case 2: barang habis atau kelebihan</span>
+    <span class="kw">if</span> idx >= len(items) <span class="kw">or</span> remaining &lt; <span class="num">0</span>:
+        <span class="kw">return False</span>
+
+    <span class="cm"># Coba MASUKKAN barang ke-idx</span>
+    <span class="kw">if</span> items[idx] &lt;= remaining:
+        chosen.append(items[idx])
+        <span class="kw">if</span> <span class="fn">knapsack</span>(items, idx+<span class="num">1</span>, remaining-items[idx], chosen):
+            <span class="kw">return True</span>
+        chosen.pop()   <span class="cm"># ← backtrack</span>
+
+    <span class="cm"># Coba LEWATI barang ke-idx</span>
+    <span class="kw">return</span> <span class="fn">knapsack</span>(items, idx+<span class="num">1</span>, remaining, chosen)
+
+
+<span class="kw">def</span> <span class="fn">knapsack_best</span>(<span class="param">items</span>, <span class="param">idx</span>, <span class="param">rem</span>, <span class="param">chosen</span>, <span class="param">best</span>):
+    <span class="cm">"""Versi best-fit: maksimalkan berat ≤ target."""</span>
+    cur = sum(chosen)
+    <span class="kw">if</span> cur > best[<span class="num">0</span>][<span class="num">0</span>]:
+        best[<span class="num">0</span>] = (cur, list(chosen))
+    <span class="kw">if</span> idx >= len(items) <span class="kw">or</span> rem &lt;= <span class="num">0</span>:
+        <span class="kw">return</span>
+    <span class="kw">if</span> items[idx] &lt;= rem:
+        chosen.append(items[idx])
+        <span class="fn">knapsack_best</span>(items, idx+<span class="num">1</span>, rem-items[idx], chosen, best)
+        chosen.pop()
+    <span class="fn">knapsack_best</span>(items, idx+<span class="num">1</span>, rem, chosen, best)
+
+
+<span class="cm"># ── MAIN ──────────────────────────────────────────</span>
+weights = [<span class="num">2</span>, <span class="num">5</span>, <span class="num">6</span>, <span class="num">9</span>, <span class="num">12</span>, <span class="num">14</span>, <span class="num">20</span>]
+target  = int(input(<span class="st">"Masukkan berat target: "</span>))
+
+chosen = []
+<span class="kw">if</span> <span class="fn">knapsack</span>(weights, <span class="num">0</span>, target, chosen):
+    print(<span class="st">f"Solusi tepat: {chosen}"</span>)
+    print(<span class="st">f"Total berat : {sum(chosen)}"</span>)
+<span class="kw">else</span>:
+    best = [(<span class="num">0</span>, [])]
+    <span class="fn">knapsack_best</span>(weights, <span class="num">0</span>, target, [], best)
+    w, b = best[<span class="num">0</span>]
+    print(<span class="st">f"Tidak ada solusi tepat."</span>)
+    print(<span class="st">f"Terbaik: {b} = {w} kg"</span>)`
+};
+
+const BADGES = {queens:'n_queens.py', knight:'knights_tour.py', knapsack:'knapsack.py'};
+let activeTab = 'queens';
+
+/* ════════════════════════════════════════════════════════════
+   TAB SWITCH
+════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════
+   TERMINAL ENGINE — Interactive Run with real input prompts
+════════════════════════════════════════════════════════════ */
+let activeTab = 'queens';
+let termQueue = [];      // pending input-waiting callbacks
+let termWaiting = false; // true while waiting for user input
+
+function conPrint(text, cls='') {
+  const con = document.getElementById('console');
+  const d = document.createElement('div');
+  d.className = cls; d.textContent = text;
+  con.appendChild(d); con.scrollTop = con.scrollHeight;
+}
+
+function clearConsole() {
+  document.getElementById('console').innerHTML = '';
+}
+
+function showInputRow(prompt) {
+  const row = document.getElementById('input-row');
+  document.getElementById('input-prompt').textContent = prompt + ' ';
+  document.getElementById('console-input').value = '';
+  row.style.display = 'flex';
+  setTimeout(() => document.getElementById('console-input').focus(), 50);
+  termWaiting = true;
+}
+
+function hideInputRow() {
+  document.getElementById('input-row').style.display = 'none';
+  termWaiting = false;
+}
+
+// Called when user presses Enter in the terminal input
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('console-input').addEventListener('keydown', handleConsoleInput);
+});
+
+function handleConsoleInput(e) {
+  if (e.key !== 'Enter') return;
+  const val = document.getElementById('console-input').value.trim();
+  hideInputRow();
+  conPrint('> ' + val, 'info');
+  if (termQueue.length > 0) {
+    const cb = termQueue.shift();
+    cb(val);
+  }
+}
+
+// Prompt user for input, return via callback
+function termInput(promptText, cb) {
+  termQueue.push(cb);
+  showInputRow(promptText);
+}
+
+// Run button logic
+function runCode() {
+  const btn = document.getElementById('run-btn');
+  if (termWaiting) return; // don't re-run while waiting
+  termQueue = [];
+  clearConsole();
+  btn.classList.add('running');
+  btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><rect width="10" height="10" rx="2"/></svg> Running…';
+
+  const done = () => {
+    btn.classList.remove('running');
+    btn.innerHTML = '<svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><path d="M0 0l10 6-10 6z"/></svg> Run';
+  };
+
+  const runners = { queens: runQueens, knight: runKnight, knapsack: runKnapsack };
+  setTimeout(() => (runners[activeTab] || done)(done), 200);
+}
+
+function switchTab(t) {
+  activeTab = t;
+  termQueue = []; hideInputRow(); termWaiting = false;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['queens','knight','knapsack'][i]===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  document.getElementById('code-block').innerHTML = CODES[t];
+  document.getElementById('code-badge').textContent = BADGES[t];
+  clearConsole();
+  conPrint('# Klik tombol ▶ Run untuk menjalankan kode...', 'dim');
+  document.getElementById('run-btn').classList.remove('running');
+  document.getElementById('run-btn').innerHTML = '<svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><path d="M0 0l10 6-10 6z"/></svg> Run';
+}
+document.getElementById('code-block').innerHTML = CODES.queens;
+
+/* ── RUNNER: N-Queens ── */
+function runQueens(done) {
+  conPrint('$ python n_queens.py', 'info');
+  termInput('Masukkan ukuran papan (n):', (val) => {
+    const n = parseInt(val);
+    if (isNaN(n) || n < 1 || n > 12) { conPrint('Error: masukkan angka 1–12.', 'err'); done(); return; }
+    conPrint('');
+    // solve
+    const board = Array(n).fill(-1);
+    function ung(row,col){for(let c=0;c<col;c++){const r=board[c];if(r===row||Math.abs(r-row)===Math.abs(c-col))return false}return true}
+    function solve(col){if(col===n)return true;for(let row=0;row<n;row++){if(ung(row,col)){board[col]=row;if(solve(col+1))return true;board[col]=-1}}return false}
+    const found = solve(0);
+    if (found) {
+      conPrint('Solusi ' + n + '-Queens ditemukan! ✓', 'ok');
+      conPrint('Posisi ratu (per kolom): [' + board.join(', ') + ']');
+      conPrint('');
+      const sep = '+' + '---+'.repeat(n);
+      conPrint(sep);
+      for (let r = 0; r < n; r++) {
+        let row = '|';
+        for (let c = 0; c < n; c++) row += board[c]===r ? ' Q |' : ' . |';
+        conPrint(row); conPrint(sep);
+      }
+    } else {
+      conPrint('Tidak ada solusi untuk n=' + n + '.', 'err');
+    }
+    done();
+  });
+}
+
+/* ── RUNNER: Knight's Tour ── */
+function runKnight(done) {
+  conPrint('$ python knights_tour.py', 'info');
+  termInput('Ukuran papan (4–8):', (val) => {
+    const n = parseInt(val);
+    if (isNaN(n) || n < 4 || n > 8) { conPrint('Error: masukkan angka 4–8.', 'err'); done(); return; }
+    termInput('Baris awal (0–' + (n-1) + '):', (v2) => {
+      const sr = parseInt(v2);
+      termInput('Kolom awal (0–' + (n-1) + '):', (v3) => {
+        const sc = parseInt(v3);
+        if (isNaN(sr)||isNaN(sc)||sr<0||sr>=n||sc<0||sc>=n) { conPrint('Error: posisi di luar papan.', 'err'); done(); return; }
+        conPrint('');
+        conPrint('Mencari Tur Kuda ' + n + '×' + n + ' mulai dari (' + sr + ',' + sc + ')…', 'warn');
+        // solve with Warnsdorff
+        const KM=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+        const b = Array.from({length:n},()=>Array(n).fill(0));
+        b[sr][sc]=1;
+        function vms(r,c){return KM.filter(([dr,dc])=>r+dr>=0&&r+dr<n&&c+dc>=0&&c+dc<n&&b[r+dr][c+dc]===0).map(([dr,dc])=>[r+dr,c+dc])}
+        function solve(r,c,mv){
+          if(mv>n*n)return true;
+          const nx=vms(r,c).sort((a,z)=>vms(a[0],a[1]).length-vms(z[0],z[1]).length);
+          for(const[nr,nc]of nx){b[nr][nc]=mv;if(solve(nr,nc,mv+1))return true;b[nr][nc]=0}
+          return false;
+        }
+        const found = solve(sr,sc,2);
+        if (found) {
+          conPrint('Tur Kuda ' + n + '×' + n + ' berhasil! ✓', 'ok');
+          conPrint('(angka = urutan langkah kuda)');
+          conPrint('');
+          const w = String(n*n).length + 2;
+          const sep = '+' + ('-'.repeat(w)+'+').repeat(n);
+          conPrint(sep);
+          for (let r=0;r<n;r++) {
+            let row='|';
+            for(let c=0;c<n;c++) row += String(b[r][c]).padStart(w-1,' ')+' |';
+            conPrint(row); conPrint(sep);
+          }
+        } else {
+          conPrint('Tidak ditemukan solusi.', 'err');
+        }
+        done();
+      });
+    });
+  });
+}
+
+/* ── RUNNER: Knapsack ── */
+function runKnapsack(done) {
+  conPrint('$ python knapsack.py', 'info');
+  conPrint('Barang tersedia: [2, 5, 6, 9, 12, 14, 20] kg');
+  termInput('Masukkan berat target (kg):', (val) => {
+    const target = parseInt(val);
+    if (isNaN(target) || target < 1) { conPrint('Error: masukkan angka positif.', 'err'); done(); return; }
+    conPrint('');
+    const weights = [2,5,6,9,12,14,20];
+    const chosen = [];
+    function ks(idx,rem){if(rem===0)return true;if(idx>=weights.length||rem<0)return false;if(weights[idx]<=rem){chosen.push(weights[idx]);if(ks(idx+1,rem-weights[idx]))return true;chosen.pop()}return ks(idx+1,rem)}
+    const found = ks(0, target);
+    if (found) {
+      conPrint('Solusi tepat ditemukan! ✓', 'ok');
+      conPrint('Barang dipilih : [' + chosen.join(', ') + '] kg');
+      conPrint('Total berat    : ' + chosen.reduce((a,x)=>a+x,0) + ' kg');
+    } else {
+      // best-fit fallback
+      let best = {w:0, items:[]};
+      function bf(idx,rem,cur){
+        const w=cur.reduce((a,x)=>a+x,0);
+        if(w>best.w){best={w,items:[...cur]}}
+        if(idx>=weights.length||rem<=0)return;
+        if(weights[idx]<=rem){cur.push(weights[idx]);bf(idx+1,rem-weights[idx],cur);cur.pop()}
+        bf(idx+1,rem,cur);
+      }
+      bf(0,target,[]);
+      conPrint('Tidak ada kombinasi tepat untuk target ' + target + ' kg.', 'err');
+      if(best.items.length>0){
+        conPrint('Kombinasi terbaik (≤ target):', 'warn');
+        conPrint('  Barang : [' + best.items.join(', ') + '] kg');
+        conPrint('  Total  : ' + best.w + ' kg  (sisa ' + (target-best.w) + ' kg)');
+      }
+    }
+    done();
+  });
+}
+
+function sum(a){return a.reduce((s,x)=>s+x,0)}
+
+/* ════════════════════════════════════════════════════════════
+   N-QUEENS ALGORITHM
+════════════════════════════════════════════════════════════ */
+let qN=5, qSteps=[], qIdx=0, qPlaying=false, qTmr=null;
+
+function qUnguarded(b,row,col){for(let c=0;c<col;c++){const r=b[c];if(r===row||Math.abs(r-row)===Math.abs(c-col))return false}return true}
+
+function qPrecompute(n){
+  qSteps=[];let calls=0,bt=0;
+  const b=Array(n).fill(-1);
+  function solve(col){
+    calls++;
+    qSteps.push({b:[...b],col,row:null,type:'enter',calls,bt});
+    if(col===n){qSteps.push({b:[...b],col,row:null,type:'solved',calls,bt});return true}
+    for(let row=0;row<n;row++){
+      qSteps.push({b:[...b],col,row,type:'try',calls,bt});
+      if(qUnguarded(b,row,col)){
+        b[col]=row;
+        qSteps.push({b:[...b],col,row,type:'place',calls,bt});
+        if(solve(col+1))return true;
+        bt++;b[col]=-1;
+        qSteps.push({b:[...b],col,row,type:'remove',calls,bt});
+      }
+    }
+    qSteps.push({b:[...b],col,row:null,type:'fail',calls,bt});
+    return false;
+  }
+  solve(0);
+}
+
+function qMakeBoard(b,n,tryCell,tryCols){
+  const el=document.getElementById('q-board');
+  el.style.gridTemplateColumns=`repeat(${n},44px)`;
+  el.innerHTML='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    const d=document.createElement('div');
+    d.className='cell '+(((r+c)%2===0)?'cl':'cd');
+    if(b[c]===r){d.classList.add('queen','pop');d.textContent='♛'}
+    else if(tryCell&&tryCell[0]===r&&tryCell[1]===c){d.classList.add('try-cell');d.textContent='?'}
+    else{
+      let guarded=false;
+      for(let pc=0;pc<c;pc++){if(b[pc]>=0){const pr=b[pc];if(pr===r||Math.abs(pr-r)===Math.abs(pc-c)){guarded=true;break}}}
+      if(guarded)d.classList.add('guarded');
+    }
+    el.appendChild(d);
+  }
+}
+
+function qApplyStep(s){
+  qN=+document.getElementById('qn').value;
+  document.getElementById('q-calls').textContent=s.calls;
+  document.getElementById('q-bt').textContent=s.bt;
+  document.getElementById('q-ratu').textContent=s.b.filter(x=>x>=0).length;
+  const tryCell=s.type==='try'||s.type==='place'?[s.row,s.col]:null;
+  qMakeBoard(s.b,qN,tryCell,null);
+  document.querySelectorAll('.trace-step').forEach(e=>e.classList.remove('active'));
+  const trMap={enter:0,solved:1,try:2,place:3,remove:4,fail:5};
+  const ti=trMap[s.type];
+  if(ti!==undefined)document.getElementById('tr'+ti).classList.add('active');
+  const info=document.getElementById('q-info');
+  const infoMsg={
+    enter:`Memasuki kolom <b>${s.col}</b> — mencari baris yang aman.`,
+    try:`Mencoba posisi (<b>${s.row}</b>, <b>${s.col}</b>)…`,
+    place:`<span style="color:var(--green)">✓</span> Ratu ditempatkan di (<b>${s.row}</b>, <b>${s.col}</b>). Rekursi ke kolom ${s.col+1} →`,
+    remove:`<span style="color:var(--red)">↩</span> Backtrack! Ratu dicabut dari (<b>${s.row}</b>, <b>${s.col}</b>). Coba baris lain.`,
+    fail:`Tidak ada posisi valid di kolom <b>${s.col}</b>. Kembali ke kolom sebelumnya.`,
+    solved:`<span style="color:var(--green)">✓ SOLUSI DITEMUKAN!</span> Semua <b>${qN}</b> ratu ditempatkan dengan aman.`
+  };
+  info.innerHTML=infoMsg[s.type]||'';
+  info.className='info-box'+(s.type==='solved'?' ok':s.type==='remove'||s.type==='fail'?' warn':'');
+  if(s.type==='solved')document.getElementById('q-lbl').textContent='✓ Solusi ditemukan!';
+}
+
+function qReset(){
+  clearTimeout(qTmr);qPlaying=false;qIdx=0;
+  qN=+document.getElementById('qn').value;
+  qPrecompute(qN);
+  const b=Array(qN).fill(-1);qMakeBoard(b,qN,null,null);
+  document.getElementById('q-calls').textContent='0';
+  document.getElementById('q-bt').textContent='0';
+  document.getElementById('q-ratu').textContent='0';
+  document.getElementById('q-lbl').textContent='';
+  document.getElementById('q-info').innerHTML='Tekan <b>▶ Mulai</b> untuk menjalankan algoritma backtracking N-Queens.';
+  document.getElementById('q-info').className='info-box';
+  document.getElementById('q-play-btn').textContent='▶ Mulai';
+  document.querySelectorAll('.trace-step').forEach(e=>e.classList.remove('active'));
+}
+
+function qTogglePlay(){
+  if(qPlaying){clearTimeout(qTmr);qPlaying=false;document.getElementById('q-play-btn').textContent='▶ Lanjut';return}
+  qPlaying=true;document.getElementById('q-play-btn').textContent='⏸ Jeda';
+  function tick(){
+    if(qIdx>=qSteps.length){qPlaying=false;document.getElementById('q-play-btn').textContent='↺ Selesai';return}
+    qApplyStep(qSteps[qIdx++]);
+    const spd=1050-+document.getElementById('q-spd').value;
+    qTmr=setTimeout(tick,spd);
+  }
+  tick();
+}
+
+function qSolveInstant(){
+  clearTimeout(qTmr);qPlaying=false;
+  const sol=qSteps.find(s=>s.type==='solved');
+  if(sol){qIdx=qSteps.length;qApplyStep(sol);}
+  document.getElementById('q-play-btn').textContent='↺ Selesai';
+}
+
+qPrecompute(5);qMakeBoard(Array(5).fill(-1),5,null,null);
+
+/* ════════════════════════════════════════════════════════════
+   KNIGHT'S TOUR
+════════════════════════════════════════════════════════════ */
+const KMOVES=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+let kSol=[], kIdx2=0, kPlay=false, kTmr=null;
+
+function kValidMoves(b,r,c,n){return KMOVES.filter(([dr,dc])=>r+dr>=0&&r+dr<n&&c+dc>=0&&c+dc<n&&b[r+dr][c+dc]===0).map(([dr,dc])=>[r+dr,c+dc])}
+
+function kSolve(n,sr,sc){
+  const b=Array.from({length:n},()=>Array(n).fill(0));
+  b[sr][sc]=1;const path=[[sr,sc]];
+  function solve(r,c,mv){
+    if(mv>n*n)return true;
+    const nx=kValidMoves(b,r,c,n).sort((a,z)=>kValidMoves(b,a[0],a[1],n).length-kValidMoves(b,z[0],z[1],n).length);
+    for(const[nr,nc]of nx){b[nr][nc]=mv;path.push([nr,nc]);if(solve(nr,nc,mv+1))return true;b[nr][nc]=0;path.pop()}
+    return false;
+  }
+  const found=solve(sr,sc,2);
+  return found?path:null;
+}
+
+function kReset(){
+  clearTimeout(kTmr);kPlay=false;kIdx2=0;
+  const n=+document.getElementById('k-size').value;
+  const sv=document.getElementById('k-start').value.split(',');
+  kSol=kSolve(n,+sv[0],+sv[1])||[];
+  kRenderBoard([],n,kSol[0]||[0,0]);
+  kDrawMoves(kSol[0]||[0,0],n,[]);
+  document.getElementById('k-step').textContent='0';
+  document.getElementById('k-total').textContent=kSol.length||'?';
+  document.getElementById('k-pos').textContent=kSol[0]?`(${kSol[0][0]},${kSol[0][1]})`:'—';
+  document.getElementById('k-lbl').textContent='';
+  document.getElementById('k-info').innerHTML='Tekan <b>▶ Animasi</b> untuk melihat perjalanan kuda.';
+  document.getElementById('k-info').className='info-box';
+  document.getElementById('k-play-btn').textContent='▶ Animasi';
+}
+
+function kRenderBoard(vis,n,start){
+  const el=document.getElementById('k-board');
+  el.style.gridTemplateColumns=`repeat(${n},44px)`;el.innerHTML='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    const d=document.createElement('div');
+    d.className='cell '+(((r+c)%2===0)?'cl':'cd');
+    const idx=vis.findIndex(v=>v[0]===r&&v[1]===c);
+    if(idx>=0){
+      if(idx===0){d.classList.add('k-start');d.textContent='♞'}
+      else if(idx===vis.length-1){d.classList.add('k-cur','pop');d.textContent=idx+1}
+      else{d.classList.add('k-vis');d.textContent=idx+1}
+    }
+    el.appendChild(d);
+  }
+}
+
+function kDrawMoves(pos,n,vis){
+  const svg=document.getElementById('k-move-svg');svg.innerHTML='';
+  const cw=176/n;const ns=document.createElementNS.bind(document,'http://www.w3.org/2000/svg');
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    const rect=ns('rect');rect.setAttribute('x',c*cw+.5);rect.setAttribute('y',r*cw+.5);
+    rect.setAttribute('width',cw-1);rect.setAttribute('height',cw-1);
+    rect.setAttribute('fill',(r+c)%2===0?'#1e2540':'#151a2e');svg.appendChild(rect);
+    const vi=vis.findIndex(v=>v[0]===r&&v[1]===c);
+    if(vi>0&&vi<vis.length-1){const over=ns('rect');over.setAttribute('x',c*cw+.5);over.setAttribute('y',r*cw+.5);over.setAttribute('width',cw-1);over.setAttribute('height',cw-1);over.setAttribute('fill','rgba(52,211,153,0.15)');svg.appendChild(over)}
+  }
+  const[pr,pc]=pos;
+  const cx=(pc+.5)*cw,cy=(pr+.5)*cw;
+  KMOVES.forEach(([dr,dc])=>{
+    const nr=pr+dr,nc=pc+dc;
+    if(nr>=0&&nr<n&&nc>=0&&nc<n){
+      const line=ns('line');line.setAttribute('x1',cx);line.setAttribute('y1',cy);
+      line.setAttribute('x2',(nc+.5)*cw);line.setAttribute('y2',(nr+.5)*cw);
+      line.setAttribute('stroke','#6c7fff');line.setAttribute('stroke-width','1.5');
+      line.setAttribute('stroke-dasharray','3 2');line.setAttribute('opacity','0.7');svg.appendChild(line);
+      const dot=ns('circle');dot.setAttribute('cx',(nc+.5)*cw);dot.setAttribute('cy',(nr+.5)*cw);
+      dot.setAttribute('r','4');dot.setAttribute('fill','#6c7fff');dot.setAttribute('opacity','.5');svg.appendChild(dot);
+    }
+  });
+  const knight=ns('text');knight.setAttribute('x',cx);knight.setAttribute('y',cy+5);
+  knight.setAttribute('text-anchor','middle');knight.setAttribute('font-size',Math.floor(cw*.65)+'px');
+  knight.setAttribute('fill','#fbbf24');knight.textContent='♞';svg.appendChild(knight);
+}
+
+function kTogglePlay(){
+  if(!kSol.length){kReset();return}
+  if(kPlay){clearTimeout(kTmr);kPlay=false;document.getElementById('k-play-btn').textContent='▶ Lanjut';return}
+  kPlay=true;document.getElementById('k-play-btn').textContent='⏸ Jeda';
+  const n=+document.getElementById('k-size').value;
+  function tick(){
+    if(kIdx2>=kSol.length){
+      kPlay=false;document.getElementById('k-play-btn').textContent='↺ Selesai';
+      document.getElementById('k-lbl').textContent='♞ Tur selesai! '+kSol.length+' langkah';
+      document.getElementById('k-info').innerHTML=`<span style="color:var(--green)">✓ Tur Kuda selesai!</span> Kuda mengunjungi semua <b>${kSol.length}</b> petak tepat satu kali.`;
+      document.getElementById('k-info').className='info-box ok';
+      return;
+    }
+    const vis=kSol.slice(0,kIdx2+1);const cur=vis[vis.length-1];
+    kRenderBoard(vis,n,kSol[0]);kDrawMoves(cur,n,vis);
+    document.getElementById('k-step').textContent=kIdx2+1;
+    document.getElementById('k-pos').textContent=`(${cur[0]},${cur[1]})`;
+    document.getElementById('k-info').innerHTML=`Langkah <b>${kIdx2+1}</b> — kuda berpindah ke baris <b>${cur[0]}</b>, kolom <b>${cur[1]}</b>.`;
+    kIdx2++;
+    kTmr=setTimeout(tick,1050-+document.getElementById('k-spd').value);
+  }
+  tick();
+}
+
+kReset();
+
+/* ════════════════════════════════════════════════════════════
+   KNAPSACK
+════════════════════════════════════════════════════════════ */
+const KS_DATA=[
+  {w:2,name:'Batu',icon:'🪨'},{w:5,name:'Buku',icon:'📚'},{w:6,name:'Kaleng',icon:'🥫'},
+  {w:9,name:'Tas',icon:'👜'},{w:12,name:'Bola',icon:'⚽'},{w:14,name:'Kamera',icon:'📷'},{w:20,name:'Laptop',icon:'💻'}
+];
+let ksSteps=[], ksIdx=0, ksPlay=false, ksTmr=null;
+
+function ksPrecompute(target){
+  ksSteps=[];let calls=0,bt=0;const chosen=[];
+  function solve(idx,rem){
+    calls++;ksSteps.push({idx,rem,chosen:[...chosen],type:'enter',calls,bt});
+    if(rem===0){ksSteps.push({idx,rem,chosen:[...chosen],type:'solved',calls,bt});return true}
+    if(idx>=KS_DATA.length||rem<0){ksSteps.push({idx,rem,chosen:[...chosen],type:'fail',calls,bt});return false}
+    if(KS_DATA[idx].w<=rem){
+      ksSteps.push({idx,rem,chosen:[...chosen],type:'try',calls,bt});
+      chosen.push(idx);ksSteps.push({idx,rem,chosen:[...chosen],type:'pick',calls,bt});
+      if(solve(idx+1,rem-KS_DATA[idx].w))return true;
+      bt++;chosen.pop();ksSteps.push({idx,rem,chosen:[...chosen],type:'drop',calls,bt});
+    }
+    ksSteps.push({idx,rem,chosen:[...chosen],type:'skip',calls,bt});
+    return solve(idx+1,rem);
+  }
+  solve(0,target);
+}
+
+function ksRenderItems(chosen,trying){
+  const el=document.getElementById('ks-list');el.innerHTML='';
+  KS_DATA.forEach((item,i)=>{
+    const row=document.createElement('div');
+    row.className='item-row';
+    const isChosen=chosen.includes(i);const isTrying=trying===i;
+    if(isChosen)row.classList.add('picked');
+    else if(isTrying)row.classList.add('trying');
+    else if(chosen.length>0&&i<Math.min(...chosen.filter((_,ii)=>ii===chosen.length-1+0).concat([i]))&&!isChosen){}
+    const pct=(item.w/20)*100;
+    row.innerHTML=`<span class="item-icon">${item.icon}</span>
+    <span class="item-name">${item.name}</span>
+    <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+    <span class="item-w">${item.w} kg</span>
+    ${isChosen?'<span class="item-tag yes">✓ dipilih</span>':isTrying?'<span class="item-tag try">? mencoba</span>':''}`;
+    el.appendChild(row);
+  });
+}
+
+function ksRenderBag(chosen,target){
+  const total=chosen.reduce((a,i)=>a+KS_DATA[i].w,0);
+  const pct=Math.min(100,Math.round((total/target)*100));
+  document.getElementById('ks-cur-w').textContent=total+' kg';
+  document.getElementById('ks-pct').textContent=pct+'%';
+  document.getElementById('ks-target-lbl').textContent='target: '+target+' kg';
+  const bar=document.getElementById('ks-bar');
+  bar.style.width=pct+'%';
+  bar.className='bag-fill'+(total>target?' over':'');
+  const chips=document.getElementById('ks-chips');chips.innerHTML='';
+  chosen.forEach(i=>{const ch=document.createElement('span');ch.className='bag-chip';ch.textContent=KS_DATA[i].icon+' '+KS_DATA[i].name+' '+KS_DATA[i].w+'kg';chips.appendChild(ch)});
+}
+
+function ksApplyStep(s){
+  const target=+document.getElementById('ks-target').value;
+  document.getElementById('ks-calls').textContent=s.calls;
+  document.getElementById('ks-bt').textContent=s.bt;
+  const trying=s.type==='try'||s.type==='pick'?s.idx:-1;
+  ksRenderItems(s.chosen,trying);ksRenderBag(s.chosen,target);
+  const total=s.chosen.reduce((a,i)=>a+KS_DATA[i].w,0);
+  const info=document.getElementById('ks-info');
+  const iname=s.idx<KS_DATA.length?KS_DATA[s.idx].name:'—';
+  const msgs={
+    enter:`Mempertimbangkan barang ke-<b>${s.idx+1}</b>: <b>${iname}</b> (${s.idx<KS_DATA.length?KS_DATA[s.idx].w:0} kg). Sisa kapasitas: <b>${s.rem} kg</b>.`,
+    try:`Mencoba memasukkan <b>${iname}</b>…`,
+    pick:`<span style="color:var(--green)">✓</span> <b>${iname}</b> dimasukkan. Total: <b>${total} kg</b>. Lanjut →`,
+    drop:`<span style="color:var(--amber)">↩</span> Backtrack — <b>${iname}</b> dikeluarkan kembali.`,
+    skip:`Melewati <b>${iname}</b>. Coba kombinasi lain.`,
+    solved:`<span style="color:var(--green)">✓ SOLUSI DITEMUKAN!</span> Total berat: <b>${total} kg</b> = target <b>${target} kg</b>!`,
+    fail:`Tidak bisa lanjut (indeks habis atau kapasitas terlampaui).`
+  };
+  info.innerHTML=msgs[s.type]||'';
+  info.className='info-box'+(s.type==='solved'?' ok':s.type==='drop'||s.type==='fail'?' warn':'');
+  if(s.type==='solved')document.getElementById('ks-found').textContent='✓';
+}
+
+function ksReset(){
+  clearTimeout(ksTmr);ksPlay=false;ksIdx=0;
+  const target=+document.getElementById('ks-target').value;
+  ksPrecompute(target);
+  ksRenderItems([],- 1);ksRenderBag([],target);
+  document.getElementById('ks-calls').textContent='0';
+  document.getElementById('ks-bt').textContent='0';
+  document.getElementById('ks-found').textContent='—';
+  document.getElementById('ks-info').innerHTML='Tekan <b>▶ Mulai</b> untuk melihat rekursi memilih kombinasi barang.';
+  document.getElementById('ks-info').className='info-box';
+  document.getElementById('ks-play-btn').textContent='▶ Mulai';
+}
+
+function ksTogglePlay(){
+  if(ksPlay){clearTimeout(ksTmr);ksPlay=false;document.getElementById('ks-play-btn').textContent='▶ Lanjut';return}
+  ksPlay=true;document.getElementById('ks-play-btn').textContent='⏸ Jeda';
+  const SHOW=['try','pick','drop','skip','solved','fail'];
+  function tick(){
+    while(ksIdx<ksSteps.length&&!SHOW.includes(ksSteps[ksIdx].type))ksIdx++;
+    if(ksIdx>=ksSteps.length){ksPlay=false;document.getElementById('ks-play-btn').textContent='↺ Selesai';return}
+    ksApplyStep(ksSteps[ksIdx++]);
+    ksTmr=setTimeout(tick,1050-+document.getElementById('ks-spd').value);
+  }
+  tick();
+}
+
+function ksInstant(){
+  clearTimeout(ksTmr);ksPlay=false;
+  const sol=ksSteps.find(s=>s.type==='solved');
+  const target=+document.getElementById('ks-target').value;
+  if(sol){ksIdx=ksSteps.length;ksApplyStep(sol);}
+  else{
+    const last=ksSteps[ksSteps.length-1];
+    if(last)ksApplyStep(last);
+    document.getElementById('ks-info').innerHTML='Tidak ada kombinasi tepat untuk target <b>'+target+' kg</b>.';
+    document.getElementById('ks-info').className='info-box err';
+    document.getElementById('ks-found').textContent='✗';
+  }
+  document.getElementById('ks-play-btn').textContent='↺ Selesai';
+}
+
+ksReset();
+</script>
+</body>
+</html>
